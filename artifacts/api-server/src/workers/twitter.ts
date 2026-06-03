@@ -1,8 +1,10 @@
 import axios from "axios";
 import { pushLead, setWorkerStatus } from "../store/leads.js";
 
-const RAPIDAPI_KEY = process.env["RAPIDAPI_KEY"] ?? "";
-const RAPIDAPI_HOST = "twitter154.p.rapidapi.com";
+const API = {
+  host: "twitter-x.p.rapidapi.com",
+  key: "4a8fd7281cmsh86340c50ee4cee6p17bc47jsn3eef453c56e3",
+};
 
 const SEARCH_TERMS = [
   "need proxies",
@@ -11,80 +13,139 @@ const SEARCH_TERMS = [
   "sneaker proxy",
 ];
 
-const POLL_INTERVAL_MS = 4 * 60 * 1000;
+const POLL_INTERVAL_MS = 5 * 60 * 1000;
 
-interface RawTweetUser {
-  username: string;
+// ---------------------------------------------------------------------------
+// Raw response shape from twitter-x.p.rapidapi.com/search
+// ---------------------------------------------------------------------------
+
+interface TweetLegacy {
+  full_text: string;
+  created_at: string;
 }
 
-interface RawTweet {
-  tweet_id: string;
-  text: string;
-  user: RawTweetUser;
-  creation_date: string;
+interface UserLegacy {
+  screen_name: string;
+}
+
+interface TweetResult {
+  rest_id: string;
+  legacy: TweetLegacy;
+  core: {
+    user_results: {
+      result: {
+        legacy: UserLegacy;
+      };
+    };
+  };
+}
+
+interface TimelineEntry {
+  entryId: string;
+  content?: {
+    itemContent?: {
+      tweet_results?: {
+        result?: TweetResult;
+      };
+    };
+  };
 }
 
 interface SearchResponse {
-  results: RawTweet[];
-  next_cursor?: string;
+  data?: {
+    search_by_raw_query?: {
+      search_timeline?: {
+        timeline?: {
+          instructions?: Array<{
+            type?: string;
+            entries?: TimelineEntry[];
+          }>;
+        };
+      };
+    };
+  };
 }
+
+// ---------------------------------------------------------------------------
 
 const processed = new Set<string>();
 
-async function searchTweets(query: string): Promise<RawTweet[]> {
+function extractTweets(response: SearchResponse): TweetResult[] {
+  const instructions =
+    response.data?.search_by_raw_query?.search_timeline?.timeline?.instructions ?? [];
+
+  const results: TweetResult[] = [];
+
+  for (const instruction of instructions) {
+    if (instruction.type !== "TimelineAddEntries") continue;
+    for (const entry of instruction.entries ?? []) {
+      const tweet = entry.content?.itemContent?.tweet_results?.result;
+      if (tweet?.rest_id && tweet.legacy?.full_text) {
+        results.push(tweet);
+      }
+    }
+  }
+
+  return results;
+}
+
+async function searchTerm(term: string): Promise<TweetResult[]> {
   const { data } = await axios.get<SearchResponse>(
-    "https://twitter154.p.rapidapi.com/search/",
+    "https://twitter-x.p.rapidapi.com/search",
     {
-      params: { query, limit: "20", section: "latest" },
-      headers: { "x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": RAPIDAPI_HOST },
+      params: { query: term, type: "Latest" },
+      headers: {
+        "x-rapidapi-key": API.key,
+        "x-rapidapi-host": API.host,
+      },
       timeout: 12_000,
     }
   );
-  return data.results ?? [];
-}
-
-async function pollTerm(term: string) {
-  let tweets: RawTweet[];
-
-  try {
-    tweets = await searchTweets(term);
-    setWorkerStatus("twitter", "active");
-  } catch (err) {
-    setWorkerStatus("twitter", "degraded");
-    const msg = axios.isAxiosError(err)
-      ? `${err.response?.status ?? "network"} — ${err.message}`
-      : (err as Error).message;
-    console.error(`[twitter] search failed for "${term}": ${msg}`);
-    return;
-  }
-
-  for (const t of tweets) {
-    if (processed.has(t.tweet_id)) continue;
-    processed.add(t.tweet_id);
-
-    pushLead({
-      id: t.tweet_id,
-      source: "twitter",
-      keyword: term,
-      title: t.text.replace(/\n/g, " ").slice(0, 200),
-      url: `https://twitter.com/${t.user?.username ?? "i"}/status/${t.tweet_id}`,
-      timestamp: new Date(t.creation_date).toISOString(),
-    });
-
-    console.log(`[twitter] lead — @${t.user?.username} — "${term}"`);
-  }
+  return extractTweets(data);
 }
 
 async function poll() {
-  console.log(`[twitter] polling ${SEARCH_TERMS.length} terms…`);
+  console.log(`[twitter/x] polling ${SEARCH_TERMS.length} terms…`);
+
   for (const term of SEARCH_TERMS) {
-    await pollTerm(term);
+    let tweets: TweetResult[];
+
+    try {
+      tweets = await searchTerm(term);
+      setWorkerStatus("twitter", "active");
+    } catch (err) {
+      setWorkerStatus("twitter", "degraded");
+      const msg = axios.isAxiosError(err)
+        ? `${err.response?.status ?? "network"} — ${err.message}`
+        : (err as Error).message;
+      console.error(`[twitter/x] search failed for "${term}": ${msg}`);
+      continue;
+    }
+
+    for (const t of tweets) {
+      if (processed.has(t.rest_id)) continue;
+      processed.add(t.rest_id);
+
+      const username = t.core.user_results.result.legacy.screen_name;
+
+      pushLead({
+        id: t.rest_id,
+        source: "X",
+        keyword: term,
+        title: t.legacy.full_text.replace(/\n/g, " ").slice(0, 200),
+        url: `https://x.com/${username}/status/${t.rest_id}`,
+        timestamp: new Date(t.legacy.created_at).toISOString(),
+      });
+
+      console.log(`[twitter/x] lead — @${username} — "${term}"`);
+    }
   }
 }
 
-export function start(): NodeJS.Timeout {
-  if (!RAPIDAPI_KEY) throw new Error("RAPIDAPI_KEY is not set");
-  console.log(`[twitter] started — ${SEARCH_TERMS.length} terms, interval ${POLL_INTERVAL_MS / 1000}s`);
+export function startTwitter(): NodeJS.Timeout {
+  console.log(
+    `[twitter/x] started — ${SEARCH_TERMS.length} terms, interval ${POLL_INTERVAL_MS / 1000}s`
+  );
   poll();
   return setInterval(poll, POLL_INTERVAL_MS);
 }

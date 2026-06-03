@@ -1,8 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { start as startReddit } from "./workers/reddit.js";
-import { start as startTwitter } from "./workers/twitter.js";
-import { setWorkerStatus } from "./store/leads.js";
+import { startTwitter } from "./workers/twitter.js";
 
 const rawPort = process.env["PORT"];
 
@@ -27,11 +26,5 @@ app.listen(port, (err) => {
   logger.info({ port }, "Server listening");
 
   startReddit();
-
-  try {
-    startTwitter();
-  } catch (e) {
-    setWorkerStatus("twitter", "degraded");
-    logger.warn({ err: e }, "Twitter worker disabled — RAPIDAPI_KEY not set");
-  }
+  startTwitter();
 });

@@ -4,7 +4,7 @@ export type WorkerStatus = "active" | "degraded";
 
 export interface Lead {
   id: string;
-  source: "reddit" | "twitter";
+  source: "reddit" | "twitter" | "X";
   keyword: string;
   title: string;
   url: string;
