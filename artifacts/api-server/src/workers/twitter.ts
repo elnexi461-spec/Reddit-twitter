@@ -1,17 +1,11 @@
 import axios from "axios";
 import { pushLead, setWorkerStatus } from "../store/leads.js";
+import { getTwitterKeywords } from "../store/keywords.js";
 
 const API = {
   host: "twitter-x.p.rapidapi.com",
   key: "4a8fd7281cmsh86340c50ee4cee6p17bc47jsn3eef453c56e3",
 };
-
-const SEARCH_TERMS = [
-  "need proxies",
-  "clean residential proxy",
-  "scraping blocked",
-  "sneaker proxy",
-];
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -105,6 +99,7 @@ async function searchTerm(term: string): Promise<TweetResult[]> {
 }
 
 async function poll() {
+  const SEARCH_TERMS = getTwitterKeywords();
   console.log(`[twitter/x] polling ${SEARCH_TERMS.length} terms…`);
 
   for (const term of SEARCH_TERMS) {
@@ -144,7 +139,7 @@ async function poll() {
 
 export function startTwitter(): NodeJS.Timeout {
   console.log(
-    `[twitter/x] started — ${SEARCH_TERMS.length} terms, interval ${POLL_INTERVAL_MS / 1000}s`
+    `[twitter/x] started — ${getTwitterKeywords().length} terms, interval ${POLL_INTERVAL_MS / 1000}s`
   );
   poll();
   return setInterval(poll, POLL_INTERVAL_MS);

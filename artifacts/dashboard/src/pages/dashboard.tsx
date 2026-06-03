@@ -1,6 +1,18 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { Activity, Clock, CheckCircle2, AlertCircle, ExternalLink, Download } from "lucide-react";
+import {
+  Activity,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  ExternalLink,
+  Download,
+  Tags,
+  Plus,
+  Trash2,
+  ToggleLeft,
+  ToggleRight,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -32,27 +44,56 @@ interface ActivityResponse {
   leads: Lead[];
 }
 
+type KeywordSource = "reddit" | "twitter" | "both";
+
+interface Keyword {
+  id: string;
+  term: string;
+  source: KeywordSource;
+  enabled: boolean;
+  createdAt: string;
+}
+
+type ActiveTab = "feed" | "keywords";
+
+const SOURCE_LABELS: Record<KeywordSource, string> = {
+  reddit: "Reddit",
+  twitter: "X / Twitter",
+  both: "Both",
+};
+
+const SOURCE_COLORS: Record<KeywordSource, string> = {
+  reddit: "bg-orange-500/10 text-orange-400 border-orange-500/20",
+  twitter: "bg-sky-500/10 text-sky-400 border-sky-500/20",
+  both: "bg-violet-500/10 text-violet-400 border-violet-500/20",
+};
+
 export default function Dashboard() {
   const [data, setData] = useState<ActivityResponse | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<ActiveTab>("feed");
+
+  const [keywords, setKeywords] = useState<Keyword[]>([]);
+  const [kwLoading, setKwLoading] = useState(false);
+  const [newTerm, setNewTerm] = useState("");
+  const [newSource, setNewSource] = useState<KeywordSource>("both");
+  const [kwError, setKwError] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
-    // Add dark mode by default on the body for this dashboard since it's hardcoded to be dark
     document.documentElement.classList.add("dark");
-    
+
     const fetchData = async () => {
       try {
-        const response = await fetch('/api/activity');
-        if (!response.ok) {
-          throw new Error('Failed to fetch activity data');
-        }
+        const response = await fetch("/api/activity");
+        if (!response.ok) throw new Error("Failed to fetch activity data");
         const result = await response.json();
         setData(result);
         setLastUpdated(new Date());
         setError(null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        setError(err instanceof Error ? err.message : "Unknown error");
       }
     };
 
@@ -60,6 +101,71 @@ export default function Dashboard() {
     const interval = setInterval(fetchData, 10000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (activeTab === "keywords") fetchKeywords();
+  }, [activeTab]);
+
+  async function fetchKeywords() {
+    setKwLoading(true);
+    setKwError(null);
+    try {
+      const res = await fetch("/api/keywords");
+      if (!res.ok) throw new Error("Failed to load keywords");
+      setKeywords(await res.json());
+    } catch (err) {
+      setKwError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setKwLoading(false);
+    }
+  }
+
+  async function handleToggle(kw: Keyword) {
+    try {
+      const res = await fetch(`/api/keywords/${kw.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: !kw.enabled }),
+      });
+      if (!res.ok) throw new Error("Failed to update keyword");
+      const updated: Keyword = await res.json();
+      setKeywords((prev) => prev.map((k) => (k.id === updated.id ? updated : k)));
+    } catch (err) {
+      setKwError(err instanceof Error ? err.message : "Unknown error");
+    }
+  }
+
+  async function handleDelete(id: string) {
+    try {
+      const res = await fetch(`/api/keywords/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete keyword");
+      setKeywords((prev) => prev.filter((k) => k.id !== id));
+    } catch (err) {
+      setKwError(err instanceof Error ? err.message : "Unknown error");
+    }
+  }
+
+  async function handleAdd(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newTerm.trim()) return;
+    setAdding(true);
+    setKwError(null);
+    try {
+      const res = await fetch("/api/keywords", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ term: newTerm.trim(), source: newSource }),
+      });
+      if (!res.ok) throw new Error("Failed to add keyword");
+      const created: Keyword = await res.json();
+      setKeywords((prev) => [...prev, created]);
+      setNewTerm("");
+    } catch (err) {
+      setKwError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setAdding(false);
+    }
+  }
 
   const formatUptime = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
@@ -78,7 +184,10 @@ export default function Dashboard() {
           <div className="flex items-center justify-center w-8 h-8 rounded-md bg-zinc-900 border border-zinc-800">
             <Activity className="w-4 h-4 text-zinc-400" />
           </div>
-          <h1 className="text-sm font-semibold tracking-tight text-zinc-100" data-testid="text-sys-name">
+          <h1
+            className="text-sm font-semibold tracking-tight text-zinc-100"
+            data-testid="text-sys-name"
+          >
             Proxies.sx Intel Engine
           </h1>
           <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-zinc-900 border border-zinc-800">
@@ -86,10 +195,15 @@ export default function Dashboard() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
-            <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-400" data-testid="status-live">Live</span>
+            <span
+              className="text-[10px] font-medium uppercase tracking-wider text-zinc-400"
+              data-testid="status-live"
+            >
+              Live
+            </span>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-3">
           <a
             href="/api/activity/export/csv"
@@ -119,13 +233,21 @@ export default function Dashboard() {
 
         {/* Metrics Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="bg-zinc-950 border-zinc-800 shadow-sm" data-testid="card-total-leads">
+          <Card
+            className="bg-zinc-950 border-zinc-800 shadow-sm"
+            data-testid="card-total-leads"
+          >
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Total Leads Discovered</CardTitle>
+              <CardTitle className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                Total Leads Discovered
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {data ? (
-                <div className="text-3xl font-bold tracking-tight text-zinc-100" data-testid="value-total-leads">
+                <div
+                  className="text-3xl font-bold tracking-tight text-zinc-100"
+                  data-testid="value-total-leads"
+                >
                   {data.totalLeads.toLocaleString()}
                 </div>
               ) : (
@@ -134,13 +256,21 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="bg-zinc-950 border-zinc-800 shadow-sm" data-testid="card-reddit-worker">
+          <Card
+            className="bg-zinc-950 border-zinc-800 shadow-sm"
+            data-testid="card-reddit-worker"
+          >
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Reddit Worker</CardTitle>
+              <CardTitle className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                Reddit Worker
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {data ? (
-                <div className="flex items-center gap-2" data-testid={`status-reddit-${data.workers.reddit}`}>
+                <div
+                  className="flex items-center gap-2"
+                  data-testid={`status-reddit-${data.workers.reddit}`}
+                >
                   {data.workers.reddit === "active" ? (
                     <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                   ) : (
@@ -156,13 +286,21 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="bg-zinc-950 border-zinc-800 shadow-sm" data-testid="card-twitter-worker">
+          <Card
+            className="bg-zinc-950 border-zinc-800 shadow-sm"
+            data-testid="card-twitter-worker"
+          >
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Twitter Worker</CardTitle>
+              <CardTitle className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                Twitter Worker
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {data ? (
-                <div className="flex items-center gap-2" data-testid={`status-twitter-${data.workers.twitter}`}>
+                <div
+                  className="flex items-center gap-2"
+                  data-testid={`status-twitter-${data.workers.twitter}`}
+                >
                   {data.workers.twitter === "active" ? (
                     <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                   ) : (
@@ -179,87 +317,338 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Activity Feed */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-zinc-100 tracking-tight">Real-Time Activity Feed</h2>
-            {data && (
-              <span className="text-xs text-zinc-500 font-mono">
-                Uptime: {formatUptime(data.uptime)}
+        {/* Tab Bar */}
+        <div className="flex items-center gap-1 border-b border-zinc-800">
+          <button
+            onClick={() => setActiveTab("feed")}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === "feed"
+                ? "border-zinc-100 text-zinc-100"
+                : "border-transparent text-zinc-500 hover:text-zinc-300"
+            }`}
+          >
+            <Activity className="w-3.5 h-3.5" />
+            Activity Feed
+          </button>
+          <button
+            onClick={() => setActiveTab("keywords")}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === "keywords"
+                ? "border-zinc-100 text-zinc-100"
+                : "border-transparent text-zinc-500 hover:text-zinc-300"
+            }`}
+          >
+            <Tags className="w-3.5 h-3.5" />
+            Keywords
+            {keywords.length > 0 && (
+              <span className="text-[10px] font-mono bg-zinc-800 text-zinc-400 rounded px-1.5 py-0.5">
+                {keywords.filter((k) => k.enabled).length}/{keywords.length}
               </span>
             )}
-          </div>
-
-          <div className="rounded-md border border-zinc-800 bg-zinc-950 overflow-hidden shadow-sm">
-            <Table>
-              <TableHeader className="bg-zinc-900/50">
-                <TableRow className="border-zinc-800 hover:bg-transparent">
-                  <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[180px]">Timestamp</TableHead>
-                  <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[120px]">Source</TableHead>
-                  <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[150px]">Keyword</TableHead>
-                  <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider">Lead Title</TableHead>
-                  <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider text-right w-[140px]">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {!data ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={`skeleton-${i}`} className="border-zinc-800 hover:bg-zinc-900/30">
-                      <TableCell><Skeleton className="h-4 w-32 bg-zinc-800" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-16 bg-zinc-800 rounded-full" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-20 bg-zinc-800" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-full bg-zinc-800" /></TableCell>
-                      <TableCell className="text-right"><Skeleton className="h-8 w-24 bg-zinc-800 ml-auto" /></TableCell>
-                    </TableRow>
-                  ))
-                ) : data.leads.length === 0 ? (
-                  <TableRow className="border-zinc-800 hover:bg-transparent">
-                    <TableCell colSpan={5} className="h-32 text-center text-zinc-500">
-                      Listening for high-intent signals...
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  data.leads.map((lead) => (
-                    <TableRow key={lead.id} className="border-zinc-800 hover:bg-zinc-900/50 transition-colors group">
-                      <TableCell className="text-zinc-400 font-mono text-xs whitespace-nowrap" data-testid={`timestamp-${lead.id}`}>
-                        {format(new Date(lead.timestamp), "MMM dd, HH:mm:ss")}
-                      </TableCell>
-                      <TableCell data-testid={`source-${lead.id}`}>
-                        {lead.source === "reddit" ? (
-                          <Badge variant="outline" className="bg-orange-500/10 text-orange-400 border-orange-500/20 hover:bg-orange-500/20 font-medium text-[10px] uppercase tracking-wider">
-                            Reddit
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-sky-500/10 text-sky-400 border-sky-500/20 hover:bg-sky-500/20 font-medium text-[10px] uppercase tracking-wider">
-                            X / Twitter
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-zinc-300 font-mono text-xs" data-testid={`keyword-${lead.id}`}>
-                        {lead.keyword}
-                      </TableCell>
-                      <TableCell className="text-zinc-200 text-sm max-w-[400px] truncate" data-testid={`title-${lead.id}`} title={lead.title}>
-                        {lead.title}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <a
-                          href={lead.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-700 disabled:pointer-events-none disabled:opacity-50 border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 hover:text-zinc-50 text-zinc-300 h-8 px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                          data-testid={`link-review-${lead.id}`}
-                        >
-                          Review Thread
-                          <ExternalLink className="ml-1.5 h-3 w-3 text-zinc-500" />
-                        </a>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+          </button>
         </div>
+
+        {/* Activity Feed Tab */}
+        {activeTab === "feed" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-zinc-100 tracking-tight">
+                Real-Time Activity Feed
+              </h2>
+              {data && (
+                <span className="text-xs text-zinc-500 font-mono">
+                  Uptime: {formatUptime(data.uptime)}
+                </span>
+              )}
+            </div>
+
+            <div className="rounded-md border border-zinc-800 bg-zinc-950 overflow-hidden shadow-sm">
+              <Table>
+                <TableHeader className="bg-zinc-900/50">
+                  <TableRow className="border-zinc-800 hover:bg-transparent">
+                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[180px]">
+                      Timestamp
+                    </TableHead>
+                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[120px]">
+                      Source
+                    </TableHead>
+                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[150px]">
+                      Keyword
+                    </TableHead>
+                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider">
+                      Lead Title
+                    </TableHead>
+                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider text-right w-[140px]">
+                      Action
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {!data ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <TableRow
+                        key={`skeleton-${i}`}
+                        className="border-zinc-800 hover:bg-zinc-900/30"
+                      >
+                        <TableCell>
+                          <Skeleton className="h-4 w-32 bg-zinc-800" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-5 w-16 bg-zinc-800 rounded-full" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-20 bg-zinc-800" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-full bg-zinc-800" />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Skeleton className="h-8 w-24 bg-zinc-800 ml-auto" />
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : data.leads.length === 0 ? (
+                    <TableRow className="border-zinc-800 hover:bg-transparent">
+                      <TableCell
+                        colSpan={5}
+                        className="h-32 text-center text-zinc-500"
+                      >
+                        Listening for high-intent signals...
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    data.leads.map((lead) => (
+                      <TableRow
+                        key={lead.id}
+                        className="border-zinc-800 hover:bg-zinc-900/50 transition-colors group"
+                      >
+                        <TableCell
+                          className="text-zinc-400 font-mono text-xs whitespace-nowrap"
+                          data-testid={`timestamp-${lead.id}`}
+                        >
+                          {format(new Date(lead.timestamp), "MMM dd, HH:mm:ss")}
+                        </TableCell>
+                        <TableCell data-testid={`source-${lead.id}`}>
+                          {lead.source === "reddit" ? (
+                            <Badge
+                              variant="outline"
+                              className="bg-orange-500/10 text-orange-400 border-orange-500/20 hover:bg-orange-500/20 font-medium text-[10px] uppercase tracking-wider"
+                            >
+                              Reddit
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="bg-sky-500/10 text-sky-400 border-sky-500/20 hover:bg-sky-500/20 font-medium text-[10px] uppercase tracking-wider"
+                            >
+                              X / Twitter
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell
+                          className="text-zinc-300 font-mono text-xs"
+                          data-testid={`keyword-${lead.id}`}
+                        >
+                          {lead.keyword}
+                        </TableCell>
+                        <TableCell
+                          className="text-zinc-200 text-sm max-w-[400px] truncate"
+                          data-testid={`title-${lead.id}`}
+                          title={lead.title}
+                        >
+                          {lead.title}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <a
+                            href={lead.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-700 disabled:pointer-events-none disabled:opacity-50 border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 hover:text-zinc-50 text-zinc-300 h-8 px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                            data-testid={`link-review-${lead.id}`}
+                          >
+                            Review Thread
+                            <ExternalLink className="ml-1.5 h-3 w-3 text-zinc-500" />
+                          </a>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )}
+
+        {/* Keywords Tab */}
+        {activeTab === "keywords" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-zinc-100 tracking-tight">
+                  Keyword Management
+                </h2>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Add, toggle, or remove the terms workers scan for. Changes apply on the next poll cycle.
+                </p>
+              </div>
+            </div>
+
+            {kwError && (
+              <div className="p-3 rounded-md bg-red-950/30 border border-red-900/50 text-red-400 text-xs flex items-center gap-2">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                {kwError}
+              </div>
+            )}
+
+            {/* Add keyword form */}
+            <form
+              onSubmit={handleAdd}
+              className="flex items-center gap-2 p-4 rounded-md border border-zinc-800 bg-zinc-900/40"
+            >
+              <input
+                type="text"
+                value={newTerm}
+                onChange={(e) => setNewTerm(e.target.value)}
+                placeholder="New keyword or phrase…"
+                className="flex-1 bg-zinc-900 border border-zinc-700 rounded-md px-3 py-1.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 focus:border-zinc-500 transition-colors"
+              />
+              <select
+                value={newSource}
+                onChange={(e) => setNewSource(e.target.value as KeywordSource)}
+                className="bg-zinc-900 border border-zinc-700 rounded-md px-3 py-1.5 text-sm text-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-500 focus:border-zinc-500 transition-colors"
+              >
+                <option value="both">Both platforms</option>
+                <option value="reddit">Reddit only</option>
+                <option value="twitter">X / Twitter only</option>
+              </select>
+              <button
+                type="submit"
+                disabled={adding || !newTerm.trim()}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-zinc-100 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                {adding ? "Adding…" : "Add"}
+              </button>
+            </form>
+
+            {/* Keywords table */}
+            <div className="rounded-md border border-zinc-800 bg-zinc-950 overflow-hidden shadow-sm">
+              <Table>
+                <TableHeader className="bg-zinc-900/50">
+                  <TableRow className="border-zinc-800 hover:bg-transparent">
+                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider">
+                      Term
+                    </TableHead>
+                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[140px]">
+                      Platform
+                    </TableHead>
+                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[100px]">
+                      Status
+                    </TableHead>
+                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[180px]">
+                      Added
+                    </TableHead>
+                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider text-right w-[100px]">
+                      Actions
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {kwLoading ? (
+                    Array.from({ length: 4 }).map((_, i) => (
+                      <TableRow
+                        key={`kw-skeleton-${i}`}
+                        className="border-zinc-800"
+                      >
+                        <TableCell>
+                          <Skeleton className="h-4 w-32 bg-zinc-800" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-5 w-20 bg-zinc-800 rounded-full" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-5 w-16 bg-zinc-800 rounded-full" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-28 bg-zinc-800" />
+                        </TableCell>
+                        <TableCell />
+                      </TableRow>
+                    ))
+                  ) : keywords.length === 0 ? (
+                    <TableRow className="border-zinc-800 hover:bg-transparent">
+                      <TableCell
+                        colSpan={5}
+                        className="h-24 text-center text-zinc-500 text-sm"
+                      >
+                        No keywords configured. Add one above.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    keywords.map((kw) => (
+                      <TableRow
+                        key={kw.id}
+                        className={`border-zinc-800 hover:bg-zinc-900/50 transition-colors group ${
+                          !kw.enabled ? "opacity-50" : ""
+                        }`}
+                      >
+                        <TableCell className="font-mono text-sm text-zinc-200">
+                          {kw.term}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={`font-medium text-[10px] uppercase tracking-wider ${SOURCE_COLORS[kw.source]}`}
+                          >
+                            {SOURCE_LABELS[kw.source]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {kw.enabled ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-emerald-400">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                              Active
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+                              <span className="w-1.5 h-1.5 rounded-full bg-zinc-600 inline-block" />
+                              Paused
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-zinc-500 font-mono text-xs">
+                          {format(new Date(kw.createdAt), "MMM dd, yyyy HH:mm")}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => handleToggle(kw)}
+                              title={kw.enabled ? "Pause keyword" : "Resume keyword"}
+                              className="p-1.5 rounded text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
+                            >
+                              {kw.enabled ? (
+                                <ToggleRight className="w-4 h-4 text-emerald-400" />
+                              ) : (
+                                <ToggleLeft className="w-4 h-4" />
+                              )}
+                            </button>
+                            <button
+                              onClick={() => handleDelete(kw.id)}
+                              title="Delete keyword"
+                              className="p-1.5 rounded text-zinc-500 hover:text-red-400 hover:bg-red-950/30 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

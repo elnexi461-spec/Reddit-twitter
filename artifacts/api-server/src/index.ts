@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { loadFromDisk } from "./store/leads.js";
+import { loadKeywords } from "./store/keywords.js";
 import { start as startReddit } from "./workers/reddit.js";
 import { startTwitter } from "./workers/twitter.js";
 
@@ -27,6 +28,7 @@ app.listen(port, (err) => {
   logger.info({ port }, "Server listening");
 
   loadFromDisk();
+  loadKeywords();
   startReddit();
   startTwitter();
 });

@@ -1,9 +1,9 @@
 import axios from "axios";
 import { pushLead, setWorkerStatus } from "../store/leads.js";
+import { getRedditKeywords } from "../store/keywords.js";
 
 const config = {
   subreddits: ["webscraping", "dataengineering", "sneakerbots"],
-  keywords: ["proxy", "proxies", "residential ip", "getting blocked"],
   intervalMs: 5 * 60 * 1000,
 };
 
@@ -37,7 +37,7 @@ async function fetchNew(subreddit: string): Promise<RedditPost["data"][]> {
 
 function matchedKeyword(text: string): string | null {
   const lower = text.toLowerCase();
-  for (const kw of config.keywords) {
+  for (const kw of getRedditKeywords()) {
     if (lower.includes(kw)) return kw;
   }
   return null;
@@ -78,7 +78,7 @@ async function poll() {
 }
 
 export function start(): NodeJS.Timeout {
-  console.log(`[reddit] watching r/${config.subreddits.join(", r/")} every ${config.intervalMs / 1000}s`);
+  console.log(`[reddit] watching r/${config.subreddits.join(", r/")} every ${config.intervalMs / 1000}s — ${getRedditKeywords().length} keywords active`);
   poll();
   return setInterval(poll, config.intervalMs);
 }
