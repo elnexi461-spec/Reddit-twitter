@@ -476,11 +476,20 @@ export default function Dashboard() {
                           <TableCell className="text-zinc-300 font-mono text-xs" data-testid={`keyword-${lead.id}`}>
                             {lead.keyword}
                           </TableCell>
-                          <TableCell className="text-zinc-200 text-sm max-w-[360px] truncate" data-testid={`title-${lead.id}`} title={lead.title}>
-                            {lead.title}
+                          <TableCell className="text-sm max-w-[360px]" data-testid={`title-${lead.id}`} title={lead.title}>
+                            <a
+                              href={lead.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1.5 text-sky-400 hover:text-sky-300 hover:underline truncate max-w-full transition-colors"
+                              data-testid={`link-review-${lead.id}`}
+                            >
+                              <span className="truncate">{lead.title}</span>
+                              <ExternalLink className="w-3 h-3 shrink-0 opacity-60" />
+                            </a>
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1.5">
+                            <div className="flex items-center justify-end">
                               {isClaimed ? (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
                                   <Check className="w-3 h-3" />
@@ -490,23 +499,13 @@ export default function Dashboard() {
                                 <button
                                   onClick={() => handleClaim(lead)}
                                   disabled={isClaiming}
-                                  title="Claim this lead"
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity text-zinc-300 bg-zinc-800 border border-zinc-600 hover:bg-zinc-700 hover:text-zinc-100 hover:border-zinc-500 disabled:opacity-40 disabled:cursor-not-allowed"
+                                  title="Claim this lead for outreach"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors text-zinc-200 bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 hover:border-zinc-500 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
                                 >
-                                  <UserCheck className="w-3 h-3" />
-                                  {isClaiming ? "…" : "Claim"}
+                                  <UserCheck className="w-3.5 h-3.5" />
+                                  {isClaiming ? "Claiming…" : "Claim"}
                                 </button>
                               )}
-                              <a
-                                href={lead.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium transition-colors border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 hover:text-zinc-50 text-zinc-300 h-8 px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                data-testid={`link-review-${lead.id}`}
-                              >
-                                Review
-                                <ExternalLink className="ml-1 h-3 w-3 text-zinc-500" />
-                              </a>
                             </div>
                           </TableCell>
                         </TableRow>
