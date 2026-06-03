@@ -1,9 +1,10 @@
-Proxies.sx Intel Engine & CRM
+PROXIES.SX INTEL ENGINE & CRM
+
 A lightweight, automated pipeline that scrapes high-intent proxy sales leads from Reddit and Hacker News in real time, scores them by urgency, and manages them through a simple built-in CRM dashboard.
 
 Built completely with TypeScript, Express, and React.
 
-Key Features
+KEY FEATURES
 
 Real-Time Monitoring: Scrapes public streams on independent loops. If one loop slows down or hits an error, the rest of the app stays completely healthy.
 
@@ -17,7 +18,7 @@ CRM Lead Claiming: Reps can click "Claim" to lock a lead. This prevents double-c
 
 1-Click CSV Export: A simple button in the header lets you grab a clean spreadsheet of all filtered leads for your sales pipeline.
 
-Project Structure
+PROJECT STRUCTURE
 
 /src/workers/ — Independent background scraping loops (Reddit & HN).
 
@@ -27,9 +28,10 @@ Project Structure
 
 /src/components/ — Sleek, scannable React frontend dashboard matching a clean dark-mode aesthetic.
 
-Tech Stack
+TECH STACK
+
 Backend: Node.js, TypeScript, Express, Axios
 
 Frontend: React, Tailwind CSS
 
-Database: Native file system (fs) rolling JSON backup (No heavy DB dependencies required)
+Database: Native file system (fs) rolling JSON backup (No heavy DB)
