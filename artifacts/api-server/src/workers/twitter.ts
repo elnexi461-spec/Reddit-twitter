@@ -2,144 +2,97 @@ import axios from "axios";
 import { pushLead, setWorkerStatus } from "../store/leads.js";
 import { getTwitterKeywords } from "../store/keywords.js";
 
-const API = {
-  host: "twitter-x.p.rapidapi.com",
-  key: "4a8fd7281cmsh86340c50ee4cee6p17bc47jsn3eef453c56e3",
-};
-
+const HN_SEARCH = "https://hn.algolia.com/api/v1/search_by_date";
 const POLL_INTERVAL_MS = 5 * 60 * 1000;
 
-// ---------------------------------------------------------------------------
-// Raw response shape from twitter-x.p.rapidapi.com/search
-// ---------------------------------------------------------------------------
-
-interface TweetLegacy {
-  full_text: string;
+interface HNHit {
+  objectID: string;
+  title?: string;
+  url?: string;
+  comment_text?: string;
+  story_title?: string;
+  story_url?: string;
   created_at: string;
+  _tags: string[];
 }
 
-interface UserLegacy {
-  screen_name: string;
+interface HNResponse {
+  hits: HNHit[];
 }
-
-interface TweetResult {
-  rest_id: string;
-  legacy: TweetLegacy;
-  core: {
-    user_results: {
-      result: {
-        legacy: UserLegacy;
-      };
-    };
-  };
-}
-
-interface TimelineEntry {
-  entryId: string;
-  content?: {
-    itemContent?: {
-      tweet_results?: {
-        result?: TweetResult;
-      };
-    };
-  };
-}
-
-interface SearchResponse {
-  data?: {
-    search_by_raw_query?: {
-      search_timeline?: {
-        timeline?: {
-          instructions?: Array<{
-            type?: string;
-            entries?: TimelineEntry[];
-          }>;
-        };
-      };
-    };
-  };
-}
-
-// ---------------------------------------------------------------------------
 
 const processed = new Set<string>();
 
-function extractTweets(response: SearchResponse): TweetResult[] {
-  const instructions =
-    response.data?.search_by_raw_query?.search_timeline?.timeline?.instructions ?? [];
-
-  const results: TweetResult[] = [];
-
-  for (const instruction of instructions) {
-    if (instruction.type !== "TimelineAddEntries") continue;
-    for (const entry of instruction.entries ?? []) {
-      const tweet = entry.content?.itemContent?.tweet_results?.result;
-      if (tweet?.rest_id && tweet.legacy?.full_text) {
-        results.push(tweet);
-      }
-    }
-  }
-
-  return results;
+function hitTitle(hit: HNHit): string {
+  if (hit.title) return hit.title;
+  if (hit.comment_text)
+    return hit.comment_text.replace(/\s+/g, " ").trim().slice(0, 200);
+  if (hit.story_title) return hit.story_title;
+  return "(no title)";
 }
 
-async function searchTerm(term: string): Promise<TweetResult[]> {
-  const { data } = await axios.get<SearchResponse>(
-    "https://twitter-x.p.rapidapi.com/search",
-    {
-      params: { query: term, type: "Latest" },
-      headers: {
-        "x-rapidapi-key": API.key,
-        "x-rapidapi-host": API.host,
-      },
-      timeout: 12_000,
-    }
-  );
-  return extractTweets(data);
+function hitUrl(hit: HNHit): string {
+  return `https://news.ycombinator.com/item?id=${hit.objectID}`;
+}
+
+async function searchTerm(term: string): Promise<HNHit[]> {
+  const { data } = await axios.get<HNResponse>(HN_SEARCH, {
+    params: { query: term, hitsPerPage: 25 },
+    timeout: 12_000,
+  });
+  return data.hits ?? [];
 }
 
 async function poll() {
-  const SEARCH_TERMS = getTwitterKeywords();
-  console.log(`[twitter/x] polling ${SEARCH_TERMS.length} terms…`);
+  const terms = getTwitterKeywords();
+  if (terms.length === 0) {
+    console.log("[hn] no keywords configured — skipping poll");
+    setWorkerStatus("twitter", "active");
+    return;
+  }
 
-  for (const term of SEARCH_TERMS) {
-    let tweets: TweetResult[];
+  console.log(`[hn] polling ${terms.length} terms via HN Algolia…`);
+  let anySuccess = false;
+
+  for (const term of terms) {
+    let hits: HNHit[];
 
     try {
-      tweets = await searchTerm(term);
-      setWorkerStatus("twitter", "active");
+      hits = await searchTerm(term);
+      anySuccess = true;
     } catch (err) {
-      setWorkerStatus("twitter", "degraded");
       const msg = axios.isAxiosError(err)
         ? `${err.response?.status ?? "network"} — ${err.message}`
         : (err as Error).message;
-      console.error(`[twitter/x] search failed for "${term}": ${msg}`);
+      console.error(`[hn] search failed for "${term}": ${msg}`);
       continue;
     }
 
-    for (const t of tweets) {
-      if (processed.has(t.rest_id)) continue;
-      processed.add(t.rest_id);
-
-      const username = t.core.user_results.result.legacy.screen_name;
+    for (const hit of hits) {
+      if (processed.has(hit.objectID)) continue;
+      processed.add(hit.objectID);
 
       pushLead({
-        id: t.rest_id,
-        source: "X",
+        id: hit.objectID,
+        source: "HN",
         keyword: term,
-        title: t.legacy.full_text.replace(/\n/g, " ").slice(0, 200),
-        url: `https://x.com/${username}/status/${t.rest_id}`,
-        timestamp: new Date(t.legacy.created_at).toISOString(),
+        title: hitTitle(hit),
+        url: hitUrl(hit),
+        timestamp: hit.created_at,
       });
 
-      console.log(`[twitter/x] lead — @${username} — "${term}"`);
+      console.log(`[hn] lead — "${term}" — ${hitTitle(hit).slice(0, 60)}`);
     }
+
+    await new Promise((r) => setTimeout(r, 200));
   }
+
+  setWorkerStatus("twitter", anySuccess ? "active" : "degraded");
 }
 
 export function startTwitter(): NodeJS.Timeout {
+  const terms = getTwitterKeywords();
   console.log(
-    `[twitter/x] started — ${getTwitterKeywords().length} terms, interval ${POLL_INTERVAL_MS / 1000}s`
+    `[hn] started — ${terms.length} terms via HN Algolia, interval ${POLL_INTERVAL_MS / 1000}s`
   );
   poll();
   return setInterval(poll, POLL_INTERVAL_MS);

@@ -5,80 +5,97 @@ import { getRedditKeywords } from "../store/keywords.js";
 const config = {
   subreddits: ["webscraping", "dataengineering", "sneakerbots"],
   intervalMs: 5 * 60 * 1000,
+  limitPerQuery: 25,
 };
 
-const UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+const BASE = "https://arctic-shift.photon-reddit.com/api/posts/search";
 
-interface RedditPost {
-  data: {
-    id: string;
-    title: string;
-    selftext: string;
-    permalink: string;
-    subreddit: string;
-    created_utc: number;
-  };
+interface ArcticPost {
+  id: string;
+  title: string;
+  selftext: string;
+  subreddit: string;
+  permalink: string;
+  created_utc: number;
 }
 
-interface RedditListing {
-  data: { children: RedditPost[] };
+interface ArcticResponse {
+  data: ArcticPost[];
 }
 
 const seen = new Set<string>();
 
-async function fetchNew(subreddit: string): Promise<RedditPost["data"][]> {
-  const { data } = await axios.get<RedditListing>(
-    `https://www.reddit.com/r/${subreddit}/new.json?limit=25`,
-    { headers: { "User-Agent": UA }, timeout: 10_000 }
-  );
-  return data.data.children.map((c) => c.data);
-}
-
-function matchedKeyword(text: string): string | null {
-  const lower = text.toLowerCase();
-  for (const kw of getRedditKeywords()) {
-    if (lower.includes(kw)) return kw;
-  }
-  return null;
+async function fetchForKeyword(
+  keyword: string,
+  subreddit: string
+): Promise<ArcticPost[]> {
+  const { data } = await axios.get<ArcticResponse>(BASE, {
+    params: {
+      query: keyword,
+      subreddit,
+      limit: config.limitPerQuery,
+      sort: "desc",
+    },
+    timeout: 12_000,
+  });
+  return data.data ?? [];
 }
 
 async function poll() {
+  const keywords = getRedditKeywords();
+  if (keywords.length === 0) {
+    console.log("[reddit] no keywords configured — skipping poll");
+    setWorkerStatus("reddit", "active");
+    return;
+  }
+
+  let anySuccess = false;
+
   for (const sub of config.subreddits) {
-    let posts: RedditPost["data"][];
+    for (const kw of keywords) {
+      let posts: ArcticPost[];
 
-    try {
-      posts = await fetchNew(sub);
-      setWorkerStatus("reddit", "active");
-    } catch (err) {
-      setWorkerStatus("reddit", "degraded");
-      console.error(`[reddit] r/${sub} fetch failed:`, (err as Error).message);
-      continue;
-    }
+      try {
+        posts = await fetchForKeyword(kw, sub);
+        anySuccess = true;
+      } catch (err) {
+        const msg = axios.isAxiosError(err)
+          ? `${err.response?.status ?? "network"} — ${err.message}`
+          : (err as Error).message;
+        console.error(`[reddit] r/${sub} keyword="${kw}" failed: ${msg}`);
+        continue;
+      }
 
-    for (const post of posts) {
-      if (seen.has(post.id)) continue;
-      seen.add(post.id);
+      for (const post of posts) {
+        if (seen.has(post.id)) continue;
+        seen.add(post.id);
 
-      const kw = matchedKeyword(post.title) ?? matchedKeyword(post.selftext);
-      if (!kw) continue;
+        pushLead({
+          id: post.id,
+          source: "reddit",
+          keyword: kw,
+          title: post.title,
+          url: `https://reddit.com${post.permalink}`,
+          timestamp: new Date(post.created_utc * 1000).toISOString(),
+        });
 
-      pushLead({
-        id: post.id,
-        source: "reddit",
-        keyword: kw,
-        title: post.title,
-        url: `https://reddit.com${post.permalink}`,
-        timestamp: new Date(post.created_utc * 1000).toISOString(),
-      });
+        console.log(
+          `[reddit] match — r/${post.subreddit} — "${kw}" — ${post.title}`
+        );
+      }
 
-      console.log(`[reddit] match — r/${post.subreddit} — "${kw}" — ${post.title}`);
+      await new Promise((r) => setTimeout(r, 300));
     }
   }
+
+  setWorkerStatus("reddit", anySuccess ? "active" : "degraded");
 }
 
 export function start(): NodeJS.Timeout {
-  console.log(`[reddit] watching r/${config.subreddits.join(", r/")} every ${config.intervalMs / 1000}s — ${getRedditKeywords().length} keywords active`);
+  const kws = getRedditKeywords();
+  console.log(
+    `[reddit] arctic-shift — r/${config.subreddits.join(", r/")} — ${kws.length} keywords — every ${config.intervalMs / 1000}s`
+  );
   poll();
   return setInterval(poll, config.intervalMs);
 }

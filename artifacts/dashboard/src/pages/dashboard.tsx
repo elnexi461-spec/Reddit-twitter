@@ -27,7 +27,7 @@ import {
 
 interface Lead {
   id: string;
-  source: "reddit" | "twitter";
+  source: "reddit" | "twitter" | "X" | "HN";
   keyword: string;
   title: string;
   url: string;
@@ -292,7 +292,7 @@ export default function Dashboard() {
           >
             <CardHeader className="pb-2">
               <CardTitle className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
-                Twitter Worker
+                HN / Algolia Worker
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -435,6 +435,13 @@ export default function Dashboard() {
                               className="bg-orange-500/10 text-orange-400 border-orange-500/20 hover:bg-orange-500/20 font-medium text-[10px] uppercase tracking-wider"
                             >
                               Reddit
+                            </Badge>
+                          ) : lead.source === "HN" ? (
+                            <Badge
+                              variant="outline"
+                              className="bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20 font-medium text-[10px] uppercase tracking-wider"
+                            >
+                              HN
                             </Badge>
                           ) : (
                             <Badge
