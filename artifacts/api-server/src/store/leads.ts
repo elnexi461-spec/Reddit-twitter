@@ -1,4 +1,5 @@
 const MAX_LEADS = 100;
+const CONTENT_WINDOW = 50;
 
 export type WorkerStatus = "active" | "degraded";
 
@@ -20,7 +21,31 @@ const leads: Lead[] = [];
 const workerStatus: WorkerState = { reddit: "active", twitter: "active" };
 const startedAt = Date.now();
 
+// Sliding window of normalized content fingerprints across both sources
+const contentWindow: string[] = [];
+
+function normalize(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isDuplicateContent(text: string): boolean {
+  const fingerprint = normalize(text);
+  return contentWindow.includes(fingerprint);
+}
+
+function trackContent(text: string): void {
+  const fingerprint = normalize(text);
+  contentWindow.push(fingerprint);
+  if (contentWindow.length > CONTENT_WINDOW) contentWindow.shift();
+}
+
 export function pushLead(lead: Lead): void {
+  if (isDuplicateContent(lead.title)) return;
+  trackContent(lead.title);
   leads.unshift(lead);
   if (leads.length > MAX_LEADS) leads.length = MAX_LEADS;
 }
