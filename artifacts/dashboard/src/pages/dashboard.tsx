@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { Activity, Clock, CheckCircle2, AlertCircle, ExternalLink } from "lucide-react";
+import { Activity, Clock, CheckCircle2, AlertCircle, ExternalLink, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -90,11 +90,22 @@ export default function Dashboard() {
           </div>
         </div>
         
-        <div className="flex items-center gap-2 text-xs text-zinc-500 font-mono">
-          <Clock className="w-3.5 h-3.5" />
-          <span data-testid="text-last-updated">
-            {lastUpdated ? format(lastUpdated, "HH:mm:ss") : "Connecting..."}
-          </span>
+        <div className="flex items-center gap-3">
+          <a
+            href="/api/activity/export/csv"
+            download
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-zinc-300 bg-zinc-900 border border-zinc-700 hover:bg-zinc-800 hover:text-zinc-100 hover:border-zinc-600 transition-colors"
+            data-testid="button-export-csv"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Export CSV
+          </a>
+          <div className="flex items-center gap-2 text-xs text-zinc-500 font-mono">
+            <Clock className="w-3.5 h-3.5" />
+            <span data-testid="text-last-updated">
+              {lastUpdated ? format(lastUpdated, "HH:mm:ss") : "Connecting..."}
+            </span>
+          </div>
         </div>
       </header>
 
