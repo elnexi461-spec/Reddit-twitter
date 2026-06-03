@@ -4,6 +4,7 @@ import { scoreLead } from "../lib/score.js";
 
 const MAX_LEADS = 100;
 const CONTENT_WINDOW = 50;
+const CURRENT_YEAR = 2026;
 const BACKUP_PATH = path.resolve(process.cwd(), "data", "leads_backup.json");
 
 export type WorkerStatus = "active" | "degraded";
@@ -17,6 +18,8 @@ export interface Lead {
   timestamp: string;
   score: number;
   tier: "hot" | "warm" | "cool";
+  claimed: boolean;
+  claimedAt?: string;
 }
 
 interface WorkerState {
@@ -35,6 +38,18 @@ const workerStatus: WorkerState = { reddit: "active", twitter: "active" };
 let startedAt = Date.now();
 
 const contentWindow: string[] = [];
+
+// ---------------------------------------------------------------------------
+// Temporal guard
+// ---------------------------------------------------------------------------
+
+function isCurrentYear(timestamp: string): boolean {
+  try {
+    return new Date(timestamp).getFullYear() === CURRENT_YEAR;
+  } catch {
+    return false;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Deduplication
@@ -74,16 +89,23 @@ function saveToDisk(): void {
   }
 }
 
-function migrateScore(lead: Partial<Lead>): Lead {
-  if (lead.score === undefined || lead.tier === undefined) {
+function migrateLead(lead: Partial<Lead>): Lead {
+  let result = lead as Lead;
+
+  if (result.score === undefined || result.tier === undefined) {
     const { score, tier } = scoreLead(
-      lead.keyword ?? "",
-      lead.source ?? "",
-      lead.title ?? ""
+      result.keyword ?? "",
+      result.source ?? "",
+      result.title ?? ""
     );
-    return { ...(lead as Lead), score, tier };
+    result = { ...result, score, tier };
   }
-  return lead as Lead;
+
+  if (result.claimed === undefined) {
+    result = { ...result, claimed: false };
+  }
+
+  return result;
 }
 
 export function loadFromDisk(): void {
@@ -95,8 +117,9 @@ export function loadFromDisk(): void {
 
     if (Array.isArray(parsed.leads)) {
       const unique = parsed.leads
-        .map(migrateScore)
+        .map(migrateLead)
         .filter((l) => {
+          if (!isCurrentYear(l.timestamp)) return false;
           if (seenIds.has(l.id)) return false;
           seenIds.add(l.id);
           return true;
@@ -104,13 +127,19 @@ export function loadFromDisk(): void {
         .slice(0, MAX_LEADS);
       leads.push(...unique);
     }
+
     if (Array.isArray(parsed.contentWindow)) {
       contentWindow.push(...parsed.contentWindow.slice(0, CONTENT_WINDOW));
     }
 
-    console.log(`[store] restored ${leads.length} leads from disk`);
+    console.log(
+      `[store] restored ${leads.length} leads from disk (${CURRENT_YEAR} only)`
+    );
   } catch (err) {
-    console.error("[store] backup parse failed, starting clean:", (err as Error).message);
+    console.error(
+      "[store] backup parse failed, starting clean:",
+      (err as Error).message
+    );
   }
 }
 
@@ -118,14 +147,23 @@ export function loadFromDisk(): void {
 // Public API
 // ---------------------------------------------------------------------------
 
-export function pushLead(lead: Omit<Lead, "score" | "tier">): void {
+export function pushLead(
+  lead: Omit<Lead, "score" | "tier" | "claimed" | "claimedAt">
+): void {
+  // 1. Temporal guard — only accept leads from the current calendar year
+  if (!isCurrentYear(lead.timestamp)) return;
+
+  // 2. ID deduplication
   if (seenIds.has(lead.id)) return;
+
+  // 3. Content deduplication
   if (isDuplicateContent(lead.title)) return;
+
   seenIds.add(lead.id);
   trackContent(lead.title);
 
   const { score, tier } = scoreLead(lead.keyword, lead.source, lead.title);
-  const full: Lead = { ...lead, score, tier };
+  const full: Lead = { ...lead, score, tier, claimed: false };
 
   leads.unshift(full);
   leads.sort((a, b) => b.score - a.score);
@@ -133,7 +171,21 @@ export function pushLead(lead: Omit<Lead, "score" | "tier">): void {
   saveToDisk();
 }
 
-export function setWorkerStatus(worker: keyof WorkerState, status: WorkerStatus): void {
+export function claimLead(id: string): Lead | null {
+  const lead = leads.find((l) => l.id === id);
+  if (!lead) return null;
+  if (lead.claimed) return lead;
+
+  lead.claimed = true;
+  lead.claimedAt = new Date().toISOString();
+  saveToDisk();
+  return { ...lead };
+}
+
+export function setWorkerStatus(
+  worker: keyof WorkerState,
+  status: WorkerStatus
+): void {
   workerStatus[worker] = status;
 }
 

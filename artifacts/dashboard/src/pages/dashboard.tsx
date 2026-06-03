@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
 import {
   Activity,
@@ -15,6 +15,8 @@ import {
   Flame,
   Thermometer,
   Minus,
+  UserCheck,
+  Check,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +39,8 @@ interface Lead {
   timestamp: string;
   score: number;
   tier: "hot" | "warm" | "cool";
+  claimed: boolean;
+  claimedAt?: string;
 }
 
 interface ActivityResponse {
@@ -78,7 +82,7 @@ function ScoreBadge({ tier, score }: { tier: Lead["tier"]; score?: number }) {
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-red-500/15 text-red-400 border border-red-500/25">
         <Flame className="w-2.5 h-2.5" />
-        Hot {score !== undefined && <span className="font-mono opacity-70">{score}</span>}
+        Hot{score !== undefined && <span className="font-mono opacity-70 ml-0.5">{score}</span>}
       </span>
     );
   }
@@ -86,14 +90,14 @@ function ScoreBadge({ tier, score }: { tier: Lead["tier"]; score?: number }) {
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-amber-500/15 text-amber-400 border border-amber-500/25">
         <Thermometer className="w-2.5 h-2.5" />
-        Warm {score !== undefined && <span className="font-mono opacity-70">{score}</span>}
+        Warm{score !== undefined && <span className="font-mono opacity-70 ml-0.5">{score}</span>}
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-zinc-500/15 text-zinc-400 border border-zinc-500/25">
       <Minus className="w-2.5 h-2.5" />
-      Cool {score !== undefined && <span className="font-mono opacity-70">{score}</span>}
+      Cool{score !== undefined && <span className="font-mono opacity-70 ml-0.5">{score}</span>}
     </span>
   );
 }
@@ -104,6 +108,10 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>("feed");
 
+  // Optimistic claim state — maps lead id → claimedAt timestamp
+  const [claimedMap, setClaimedMap] = useState<Record<string, string>>({});
+  const [claimingId, setClaimingId] = useState<string | null>(null);
+
   const [keywords, setKeywords] = useState<Keyword[]>([]);
   const [kwLoading, setKwLoading] = useState(false);
   const [newTerm, setNewTerm] = useState("");
@@ -111,30 +119,57 @@ export default function Dashboard() {
   const [kwError, setKwError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
 
+  const fetchData = useCallback(async () => {
+    try {
+      const response = await fetch("/api/activity");
+      if (!response.ok) throw new Error("Failed to fetch activity data");
+      const result: ActivityResponse = await response.json();
+      setData(result);
+      setLastUpdated(new Date());
+      setError(null);
+      // Sync server-side claimed state into local map
+      setClaimedMap((prev) => {
+        const next = { ...prev };
+        for (const lead of result.leads) {
+          if (lead.claimed && lead.claimedAt && !next[lead.id]) {
+            next[lead.id] = lead.claimedAt;
+          }
+        }
+        return next;
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    }
+  }, []);
+
   useEffect(() => {
     document.documentElement.classList.add("dark");
-
-    const fetchData = async () => {
-      try {
-        const response = await fetch("/api/activity");
-        if (!response.ok) throw new Error("Failed to fetch activity data");
-        const result = await response.json();
-        setData(result);
-        setLastUpdated(new Date());
-        setError(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
-      }
-    };
-
     fetchData();
     const interval = setInterval(fetchData, 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchData]);
 
   useEffect(() => {
     if (activeTab === "keywords") fetchKeywords();
   }, [activeTab]);
+
+  async function handleClaim(lead: Lead) {
+    if (claimedMap[lead.id] || claimingId) return;
+    setClaimingId(lead.id);
+    try {
+      const res = await fetch(`/api/leads/${lead.id}/claim`, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to claim lead");
+      const updated: Lead = await res.json();
+      setClaimedMap((prev) => ({
+        ...prev,
+        [lead.id]: updated.claimedAt ?? new Date().toISOString(),
+      }));
+    } catch {
+      // silently ignore — row stays unclaimed, user can retry
+    } finally {
+      setClaimingId(null);
+    }
+  }
 
   async function fetchKeywords() {
     setKwLoading(true);
@@ -207,6 +242,7 @@ export default function Dashboard() {
   };
 
   const hotCount = data?.leads.filter((l) => l.tier === "hot").length ?? 0;
+  const claimedCount = Object.keys(claimedMap).length;
 
   return (
     <div className="min-h-screen w-full bg-zinc-950 text-zinc-50 font-sans selection:bg-zinc-800">
@@ -216,10 +252,7 @@ export default function Dashboard() {
           <div className="flex items-center justify-center w-8 h-8 rounded-md bg-zinc-900 border border-zinc-800">
             <Activity className="w-4 h-4 text-zinc-400" />
           </div>
-          <h1
-            className="text-sm font-semibold tracking-tight text-zinc-100"
-            data-testid="text-sys-name"
-          >
+          <h1 className="text-sm font-semibold tracking-tight text-zinc-100" data-testid="text-sys-name">
             Proxies.sx Intel Engine
           </h1>
           <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-zinc-900 border border-zinc-800">
@@ -227,12 +260,7 @@ export default function Dashboard() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
-            <span
-              className="text-[10px] font-medium uppercase tracking-wider text-zinc-400"
-              data-testid="status-live"
-            >
-              Live
-            </span>
+            <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-400" data-testid="status-live">Live</span>
           </div>
           {hotCount > 0 && (
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/20">
@@ -270,107 +298,77 @@ export default function Dashboard() {
         )}
 
         {/* Metrics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card
-            className="bg-zinc-950 border-zinc-800 shadow-sm"
-            data-testid="card-total-leads"
-          >
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <Card className="bg-zinc-950 border-zinc-800 shadow-sm" data-testid="card-total-leads">
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
-                Total Leads
-              </CardTitle>
+              <CardTitle className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Total Leads</CardTitle>
             </CardHeader>
             <CardContent>
               {data ? (
-                <div
-                  className="text-3xl font-bold tracking-tight text-zinc-100"
-                  data-testid="value-total-leads"
-                >
+                <div className="text-3xl font-bold tracking-tight text-zinc-100" data-testid="value-total-leads">
                   {data.totalLeads.toLocaleString()}
                 </div>
-              ) : (
-                <Skeleton className="h-9 w-24 bg-zinc-800" />
-              )}
+              ) : <Skeleton className="h-9 w-24 bg-zinc-800" />}
             </CardContent>
           </Card>
 
           <Card className="bg-zinc-950 border-zinc-800 shadow-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
-                Hot Leads
-              </CardTitle>
+              <CardTitle className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Hot Leads</CardTitle>
             </CardHeader>
             <CardContent>
               {data ? (
                 <div className="flex items-center gap-2">
                   <Flame className="w-5 h-5 text-red-400" />
-                  <span className="text-3xl font-bold tracking-tight text-red-400">
-                    {data.leads.filter((l) => l.tier === "hot").length}
-                  </span>
+                  <span className="text-3xl font-bold tracking-tight text-red-400">{hotCount}</span>
                 </div>
-              ) : (
-                <Skeleton className="h-9 w-16 bg-zinc-800" />
-              )}
+              ) : <Skeleton className="h-9 w-16 bg-zinc-800" />}
             </CardContent>
           </Card>
 
-          <Card
-            className="bg-zinc-950 border-zinc-800 shadow-sm"
-            data-testid="card-reddit-worker"
-          >
+          <Card className="bg-zinc-950 border-zinc-800 shadow-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
-                Reddit Worker
-              </CardTitle>
+              <CardTitle className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Claimed</CardTitle>
             </CardHeader>
             <CardContent>
               {data ? (
-                <div
-                  className="flex items-center gap-2"
-                  data-testid={`status-reddit-${data.workers.reddit}`}
-                >
-                  {data.workers.reddit === "active" ? (
-                    <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                  ) : (
-                    <AlertCircle className="w-5 h-5 text-amber-500" />
-                  )}
-                  <span className="text-lg font-medium capitalize text-zinc-200">
-                    {data.workers.reddit}
-                  </span>
+                <div className="flex items-center gap-2">
+                  <UserCheck className="w-5 h-5 text-emerald-400" />
+                  <span className="text-3xl font-bold tracking-tight text-emerald-400">{claimedCount}</span>
                 </div>
-              ) : (
-                <Skeleton className="h-7 w-28 bg-zinc-800" />
-              )}
+              ) : <Skeleton className="h-9 w-16 bg-zinc-800" />}
             </CardContent>
           </Card>
 
-          <Card
-            className="bg-zinc-950 border-zinc-800 shadow-sm"
-            data-testid="card-twitter-worker"
-          >
+          <Card className="bg-zinc-950 border-zinc-800 shadow-sm" data-testid="card-reddit-worker">
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
-                HN / Algolia Worker
-              </CardTitle>
+              <CardTitle className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Reddit Worker</CardTitle>
             </CardHeader>
             <CardContent>
               {data ? (
-                <div
-                  className="flex items-center gap-2"
-                  data-testid={`status-twitter-${data.workers.twitter}`}
-                >
-                  {data.workers.twitter === "active" ? (
-                    <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                  ) : (
-                    <AlertCircle className="w-5 h-5 text-amber-500" />
-                  )}
-                  <span className="text-lg font-medium capitalize text-zinc-200">
-                    {data.workers.twitter}
-                  </span>
+                <div className="flex items-center gap-2" data-testid={`status-reddit-${data.workers.reddit}`}>
+                  {data.workers.reddit === "active"
+                    ? <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                    : <AlertCircle className="w-5 h-5 text-amber-500" />}
+                  <span className="text-lg font-medium capitalize text-zinc-200">{data.workers.reddit}</span>
                 </div>
-              ) : (
-                <Skeleton className="h-7 w-28 bg-zinc-800" />
-              )}
+              ) : <Skeleton className="h-7 w-28 bg-zinc-800" />}
+            </CardContent>
+          </Card>
+
+          <Card className="bg-zinc-950 border-zinc-800 shadow-sm" data-testid="card-twitter-worker">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-medium text-zinc-400 uppercase tracking-wider">HN / Algolia Worker</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {data ? (
+                <div className="flex items-center gap-2" data-testid={`status-twitter-${data.workers.twitter}`}>
+                  {data.workers.twitter === "active"
+                    ? <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                    : <AlertCircle className="w-5 h-5 text-amber-500" />}
+                  <span className="text-lg font-medium capitalize text-zinc-200">{data.workers.twitter}</span>
+                </div>
+              ) : <Skeleton className="h-7 w-28 bg-zinc-800" />}
             </CardContent>
           </Card>
         </div>
@@ -380,9 +378,7 @@ export default function Dashboard() {
           <button
             onClick={() => setActiveTab("feed")}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === "feed"
-                ? "border-zinc-100 text-zinc-100"
-                : "border-transparent text-zinc-500 hover:text-zinc-300"
+              activeTab === "feed" ? "border-zinc-100 text-zinc-100" : "border-transparent text-zinc-500 hover:text-zinc-300"
             }`}
           >
             <Activity className="w-3.5 h-3.5" />
@@ -391,9 +387,7 @@ export default function Dashboard() {
           <button
             onClick={() => setActiveTab("keywords")}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === "keywords"
-                ? "border-zinc-100 text-zinc-100"
-                : "border-transparent text-zinc-500 hover:text-zinc-300"
+              activeTab === "keywords" ? "border-zinc-100 text-zinc-100" : "border-transparent text-zinc-500 hover:text-zinc-300"
             }`}
           >
             <Tags className="w-3.5 h-3.5" />
@@ -412,12 +406,10 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-zinc-100 tracking-tight">
                 Real-Time Activity Feed
-                <span className="ml-2 text-xs font-normal text-zinc-500">— sorted by urgency score</span>
+                <span className="ml-2 text-xs font-normal text-zinc-500">— sorted by urgency score · 2026 only</span>
               </h2>
               {data && (
-                <span className="text-xs text-zinc-500 font-mono">
-                  Uptime: {formatUptime(data.uptime)}
-                </span>
+                <span className="text-xs text-zinc-500 font-mono">Uptime: {formatUptime(data.uptime)}</span>
               )}
             </div>
 
@@ -425,118 +417,101 @@ export default function Dashboard() {
               <Table>
                 <TableHeader className="bg-zinc-900/50">
                   <TableRow className="border-zinc-800 hover:bg-transparent">
-                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[110px]">
-                      Score
-                    </TableHead>
-                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[165px]">
-                      Timestamp
-                    </TableHead>
-                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[100px]">
-                      Source
-                    </TableHead>
-                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[140px]">
-                      Keyword
-                    </TableHead>
-                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider">
-                      Lead Title
-                    </TableHead>
-                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider text-right w-[140px]">
-                      Action
-                    </TableHead>
+                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[110px]">Score</TableHead>
+                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[165px]">Timestamp</TableHead>
+                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[90px]">Source</TableHead>
+                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[140px]">Keyword</TableHead>
+                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider">Lead Title</TableHead>
+                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider text-right w-[200px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {!data ? (
                     Array.from({ length: 5 }).map((_, i) => (
-                      <TableRow
-                        key={`skeleton-${i}`}
-                        className="border-zinc-800 hover:bg-zinc-900/30"
-                      >
+                      <TableRow key={`skeleton-${i}`} className="border-zinc-800 hover:bg-zinc-900/30">
                         <TableCell><Skeleton className="h-5 w-16 bg-zinc-800 rounded-full" /></TableCell>
                         <TableCell><Skeleton className="h-4 w-32 bg-zinc-800" /></TableCell>
-                        <TableCell><Skeleton className="h-5 w-16 bg-zinc-800 rounded-full" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-14 bg-zinc-800 rounded-full" /></TableCell>
                         <TableCell><Skeleton className="h-4 w-20 bg-zinc-800" /></TableCell>
                         <TableCell><Skeleton className="h-4 w-full bg-zinc-800" /></TableCell>
-                        <TableCell className="text-right"><Skeleton className="h-8 w-24 bg-zinc-800 ml-auto" /></TableCell>
+                        <TableCell className="text-right"><Skeleton className="h-8 w-32 bg-zinc-800 ml-auto" /></TableCell>
                       </TableRow>
                     ))
                   ) : data.leads.length === 0 ? (
                     <TableRow className="border-zinc-800 hover:bg-transparent">
-                      <TableCell
-                        colSpan={6}
-                        className="h-32 text-center text-zinc-500"
-                      >
-                        Listening for high-intent signals...
+                      <TableCell colSpan={6} className="h-32 text-center text-zinc-500">
+                        Listening for 2026 high-intent signals...
                       </TableCell>
                     </TableRow>
                   ) : (
-                    data.leads.map((lead) => (
-                      <TableRow
-                        key={lead.id}
-                        className={`border-zinc-800 hover:bg-zinc-900/50 transition-colors group ${
-                          lead.tier === "hot" ? "bg-red-950/5" : ""
-                        }`}
-                      >
-                        <TableCell>
-                          <ScoreBadge tier={lead.tier ?? "cool"} score={lead.score} />
-                        </TableCell>
-                        <TableCell
-                          className="text-zinc-400 font-mono text-xs whitespace-nowrap"
-                          data-testid={`timestamp-${lead.id}`}
+                    data.leads.map((lead) => {
+                      const isClaimed = !!(claimedMap[lead.id] || lead.claimed);
+                      const isClaiming = claimingId === lead.id;
+                      return (
+                        <TableRow
+                          key={lead.id}
+                          className={`border-zinc-800 transition-colors group ${
+                            isClaimed
+                              ? "opacity-60 hover:opacity-80"
+                              : lead.tier === "hot"
+                              ? "bg-red-950/5 hover:bg-zinc-900/50"
+                              : "hover:bg-zinc-900/50"
+                          }`}
                         >
-                          {format(new Date(lead.timestamp), "MMM dd, HH:mm:ss")}
-                        </TableCell>
-                        <TableCell data-testid={`source-${lead.id}`}>
-                          {lead.source === "reddit" ? (
-                            <Badge
-                              variant="outline"
-                              className="bg-orange-500/10 text-orange-400 border-orange-500/20 hover:bg-orange-500/20 font-medium text-[10px] uppercase tracking-wider"
-                            >
-                              Reddit
-                            </Badge>
-                          ) : lead.source === "HN" ? (
-                            <Badge
-                              variant="outline"
-                              className="bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20 font-medium text-[10px] uppercase tracking-wider"
-                            >
-                              HN
-                            </Badge>
-                          ) : (
-                            <Badge
-                              variant="outline"
-                              className="bg-sky-500/10 text-sky-400 border-sky-500/20 hover:bg-sky-500/20 font-medium text-[10px] uppercase tracking-wider"
-                            >
-                              X / Twitter
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell
-                          className="text-zinc-300 font-mono text-xs"
-                          data-testid={`keyword-${lead.id}`}
-                        >
-                          {lead.keyword}
-                        </TableCell>
-                        <TableCell
-                          className="text-zinc-200 text-sm max-w-[400px] truncate"
-                          data-testid={`title-${lead.id}`}
-                          title={lead.title}
-                        >
-                          {lead.title}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <a
-                            href={lead.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-700 disabled:pointer-events-none disabled:opacity-50 border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 hover:text-zinc-50 text-zinc-300 h-8 px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                            data-testid={`link-review-${lead.id}`}
-                          >
-                            Review Thread
-                            <ExternalLink className="ml-1.5 h-3 w-3 text-zinc-500" />
-                          </a>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                          <TableCell>
+                            <ScoreBadge tier={lead.tier ?? "cool"} score={lead.score} />
+                          </TableCell>
+                          <TableCell className="text-zinc-400 font-mono text-xs whitespace-nowrap" data-testid={`timestamp-${lead.id}`}>
+                            {format(new Date(lead.timestamp), "MMM dd, HH:mm:ss")}
+                          </TableCell>
+                          <TableCell data-testid={`source-${lead.id}`}>
+                            {lead.source === "reddit" ? (
+                              <Badge variant="outline" className="bg-orange-500/10 text-orange-400 border-orange-500/20 font-medium text-[10px] uppercase tracking-wider">Reddit</Badge>
+                            ) : lead.source === "HN" ? (
+                              <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/20 font-medium text-[10px] uppercase tracking-wider">HN</Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-sky-500/10 text-sky-400 border-sky-500/20 font-medium text-[10px] uppercase tracking-wider">X</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-zinc-300 font-mono text-xs" data-testid={`keyword-${lead.id}`}>
+                            {lead.keyword}
+                          </TableCell>
+                          <TableCell className="text-zinc-200 text-sm max-w-[360px] truncate" data-testid={`title-${lead.id}`} title={lead.title}>
+                            {lead.title}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {isClaimed ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
+                                  <Check className="w-3 h-3" />
+                                  Claimed
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={() => handleClaim(lead)}
+                                  disabled={isClaiming}
+                                  title="Claim this lead"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity text-zinc-300 bg-zinc-800 border border-zinc-600 hover:bg-zinc-700 hover:text-zinc-100 hover:border-zinc-500 disabled:opacity-40 disabled:cursor-not-allowed"
+                                >
+                                  <UserCheck className="w-3 h-3" />
+                                  {isClaiming ? "…" : "Claim"}
+                                </button>
+                              )}
+                              <a
+                                href={lead.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium transition-colors border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 hover:text-zinc-50 text-zinc-300 h-8 px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                data-testid={`link-review-${lead.id}`}
+                              >
+                                Review
+                                <ExternalLink className="ml-1 h-3 w-3 text-zinc-500" />
+                              </a>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
@@ -547,15 +522,11 @@ export default function Dashboard() {
         {/* Keywords Tab */}
         {activeTab === "keywords" && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-zinc-100 tracking-tight">
-                  Keyword Management
-                </h2>
-                <p className="text-xs text-zinc-500 mt-0.5">
-                  Add, toggle, or remove the terms workers scan for. Changes apply on the next poll cycle.
-                </p>
-              </div>
+            <div>
+              <h2 className="text-lg font-semibold text-zinc-100 tracking-tight">Keyword Management</h2>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Add, toggle, or remove the terms workers scan for. Changes apply on the next poll cycle.
+              </p>
             </div>
 
             {kwError && (
@@ -565,11 +536,7 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* Add keyword form */}
-            <form
-              onSubmit={handleAdd}
-              className="flex items-center gap-2 p-4 rounded-md border border-zinc-800 bg-zinc-900/40"
-            >
+            <form onSubmit={handleAdd} className="flex items-center gap-2 p-4 rounded-md border border-zinc-800 bg-zinc-900/40">
               <input
                 type="text"
                 value={newTerm}
@@ -596,26 +563,15 @@ export default function Dashboard() {
               </button>
             </form>
 
-            {/* Keywords table */}
             <div className="rounded-md border border-zinc-800 bg-zinc-950 overflow-hidden shadow-sm">
               <Table>
                 <TableHeader className="bg-zinc-900/50">
                   <TableRow className="border-zinc-800 hover:bg-transparent">
-                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider">
-                      Term
-                    </TableHead>
-                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[140px]">
-                      Platform
-                    </TableHead>
-                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[100px]">
-                      Status
-                    </TableHead>
-                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[180px]">
-                      Added
-                    </TableHead>
-                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider text-right w-[100px]">
-                      Actions
-                    </TableHead>
+                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider">Term</TableHead>
+                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[140px]">Platform</TableHead>
+                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[100px]">Status</TableHead>
+                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[180px]">Added</TableHead>
+                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider text-right w-[100px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -639,31 +595,22 @@ export default function Dashboard() {
                     keywords.map((kw) => (
                       <TableRow
                         key={kw.id}
-                        className={`border-zinc-800 hover:bg-zinc-900/50 transition-colors group ${
-                          !kw.enabled ? "opacity-50" : ""
-                        }`}
+                        className={`border-zinc-800 hover:bg-zinc-900/50 transition-colors group ${!kw.enabled ? "opacity-50" : ""}`}
                       >
-                        <TableCell className="font-mono text-sm text-zinc-200">
-                          {kw.term}
-                        </TableCell>
+                        <TableCell className="font-mono text-sm text-zinc-200">{kw.term}</TableCell>
                         <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={`font-medium text-[10px] uppercase tracking-wider ${SOURCE_COLORS[kw.source]}`}
-                          >
+                          <Badge variant="outline" className={`font-medium text-[10px] uppercase tracking-wider ${SOURCE_COLORS[kw.source]}`}>
                             {SOURCE_LABELS[kw.source]}
                           </Badge>
                         </TableCell>
                         <TableCell>
                           {kw.enabled ? (
                             <span className="inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-emerald-400">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                              Active
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />Active
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
-                              <span className="w-1.5 h-1.5 rounded-full bg-zinc-600 inline-block" />
-                              Paused
+                              <span className="w-1.5 h-1.5 rounded-full bg-zinc-600 inline-block" />Paused
                             </span>
                           )}
                         </TableCell>
@@ -677,11 +624,9 @@ export default function Dashboard() {
                               title={kw.enabled ? "Pause keyword" : "Resume keyword"}
                               className="p-1.5 rounded text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
                             >
-                              {kw.enabled ? (
-                                <ToggleRight className="w-4 h-4 text-emerald-400" />
-                              ) : (
-                                <ToggleLeft className="w-4 h-4" />
-                              )}
+                              {kw.enabled
+                                ? <ToggleRight className="w-4 h-4 text-emerald-400" />
+                                : <ToggleLeft className="w-4 h-4" />}
                             </button>
                             <button
                               onClick={() => handleDelete(kw.id)}
