@@ -12,6 +12,9 @@ import {
   Trash2,
   ToggleLeft,
   ToggleRight,
+  Flame,
+  Thermometer,
+  Minus,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +35,8 @@ interface Lead {
   title: string;
   url: string;
   timestamp: string;
+  score: number;
+  tier: "hot" | "warm" | "cool";
 }
 
 interface ActivityResponse {
@@ -67,6 +72,31 @@ const SOURCE_COLORS: Record<KeywordSource, string> = {
   twitter: "bg-sky-500/10 text-sky-400 border-sky-500/20",
   both: "bg-violet-500/10 text-violet-400 border-violet-500/20",
 };
+
+function ScoreBadge({ tier, score }: { tier: Lead["tier"]; score?: number }) {
+  if (tier === "hot") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-red-500/15 text-red-400 border border-red-500/25">
+        <Flame className="w-2.5 h-2.5" />
+        Hot {score !== undefined && <span className="font-mono opacity-70">{score}</span>}
+      </span>
+    );
+  }
+  if (tier === "warm") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-amber-500/15 text-amber-400 border border-amber-500/25">
+        <Thermometer className="w-2.5 h-2.5" />
+        Warm {score !== undefined && <span className="font-mono opacity-70">{score}</span>}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-zinc-500/15 text-zinc-400 border border-zinc-500/25">
+      <Minus className="w-2.5 h-2.5" />
+      Cool {score !== undefined && <span className="font-mono opacity-70">{score}</span>}
+    </span>
+  );
+}
 
 export default function Dashboard() {
   const [data, setData] = useState<ActivityResponse | null>(null);
@@ -176,6 +206,8 @@ export default function Dashboard() {
     return `${s}s`;
   };
 
+  const hotCount = data?.leads.filter((l) => l.tier === "hot").length ?? 0;
+
   return (
     <div className="min-h-screen w-full bg-zinc-950 text-zinc-50 font-sans selection:bg-zinc-800">
       {/* Top Navigation */}
@@ -202,6 +234,12 @@ export default function Dashboard() {
               Live
             </span>
           </div>
+          {hotCount > 0 && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/20">
+              <Flame className="w-3 h-3 text-red-400" />
+              <span className="text-[10px] font-semibold text-red-400">{hotCount} hot</span>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
@@ -232,14 +270,14 @@ export default function Dashboard() {
         )}
 
         {/* Metrics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card
             className="bg-zinc-950 border-zinc-800 shadow-sm"
             data-testid="card-total-leads"
           >
             <CardHeader className="pb-2">
               <CardTitle className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
-                Total Leads Discovered
+                Total Leads
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -252,6 +290,26 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <Skeleton className="h-9 w-24 bg-zinc-800" />
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="bg-zinc-950 border-zinc-800 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                Hot Leads
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {data ? (
+                <div className="flex items-center gap-2">
+                  <Flame className="w-5 h-5 text-red-400" />
+                  <span className="text-3xl font-bold tracking-tight text-red-400">
+                    {data.leads.filter((l) => l.tier === "hot").length}
+                  </span>
+                </div>
+              ) : (
+                <Skeleton className="h-9 w-16 bg-zinc-800" />
               )}
             </CardContent>
           </Card>
@@ -354,6 +412,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-zinc-100 tracking-tight">
                 Real-Time Activity Feed
+                <span className="ml-2 text-xs font-normal text-zinc-500">— sorted by urgency score</span>
               </h2>
               {data && (
                 <span className="text-xs text-zinc-500 font-mono">
@@ -366,13 +425,16 @@ export default function Dashboard() {
               <Table>
                 <TableHeader className="bg-zinc-900/50">
                   <TableRow className="border-zinc-800 hover:bg-transparent">
-                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[180px]">
+                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[110px]">
+                      Score
+                    </TableHead>
+                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[165px]">
                       Timestamp
                     </TableHead>
-                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[120px]">
+                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[100px]">
                       Source
                     </TableHead>
-                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[150px]">
+                    <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider w-[140px]">
                       Keyword
                     </TableHead>
                     <TableHead className="text-zinc-400 font-medium text-xs uppercase tracking-wider">
@@ -390,27 +452,18 @@ export default function Dashboard() {
                         key={`skeleton-${i}`}
                         className="border-zinc-800 hover:bg-zinc-900/30"
                       >
-                        <TableCell>
-                          <Skeleton className="h-4 w-32 bg-zinc-800" />
-                        </TableCell>
-                        <TableCell>
-                          <Skeleton className="h-5 w-16 bg-zinc-800 rounded-full" />
-                        </TableCell>
-                        <TableCell>
-                          <Skeleton className="h-4 w-20 bg-zinc-800" />
-                        </TableCell>
-                        <TableCell>
-                          <Skeleton className="h-4 w-full bg-zinc-800" />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Skeleton className="h-8 w-24 bg-zinc-800 ml-auto" />
-                        </TableCell>
+                        <TableCell><Skeleton className="h-5 w-16 bg-zinc-800 rounded-full" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-32 bg-zinc-800" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-16 bg-zinc-800 rounded-full" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-20 bg-zinc-800" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-full bg-zinc-800" /></TableCell>
+                        <TableCell className="text-right"><Skeleton className="h-8 w-24 bg-zinc-800 ml-auto" /></TableCell>
                       </TableRow>
                     ))
                   ) : data.leads.length === 0 ? (
                     <TableRow className="border-zinc-800 hover:bg-transparent">
                       <TableCell
-                        colSpan={5}
+                        colSpan={6}
                         className="h-32 text-center text-zinc-500"
                       >
                         Listening for high-intent signals...
@@ -420,8 +473,13 @@ export default function Dashboard() {
                     data.leads.map((lead) => (
                       <TableRow
                         key={lead.id}
-                        className="border-zinc-800 hover:bg-zinc-900/50 transition-colors group"
+                        className={`border-zinc-800 hover:bg-zinc-900/50 transition-colors group ${
+                          lead.tier === "hot" ? "bg-red-950/5" : ""
+                        }`}
                       >
+                        <TableCell>
+                          <ScoreBadge tier={lead.tier ?? "cool"} score={lead.score} />
+                        </TableCell>
                         <TableCell
                           className="text-zinc-400 font-mono text-xs whitespace-nowrap"
                           data-testid={`timestamp-${lead.id}`}
@@ -526,7 +584,7 @@ export default function Dashboard() {
               >
                 <option value="both">Both platforms</option>
                 <option value="reddit">Reddit only</option>
-                <option value="twitter">X / Twitter only</option>
+                <option value="twitter">HN only</option>
               </select>
               <button
                 type="submit"
@@ -563,31 +621,17 @@ export default function Dashboard() {
                 <TableBody>
                   {kwLoading ? (
                     Array.from({ length: 4 }).map((_, i) => (
-                      <TableRow
-                        key={`kw-skeleton-${i}`}
-                        className="border-zinc-800"
-                      >
-                        <TableCell>
-                          <Skeleton className="h-4 w-32 bg-zinc-800" />
-                        </TableCell>
-                        <TableCell>
-                          <Skeleton className="h-5 w-20 bg-zinc-800 rounded-full" />
-                        </TableCell>
-                        <TableCell>
-                          <Skeleton className="h-5 w-16 bg-zinc-800 rounded-full" />
-                        </TableCell>
-                        <TableCell>
-                          <Skeleton className="h-4 w-28 bg-zinc-800" />
-                        </TableCell>
+                      <TableRow key={`kw-skeleton-${i}`} className="border-zinc-800">
+                        <TableCell><Skeleton className="h-4 w-32 bg-zinc-800" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-20 bg-zinc-800 rounded-full" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-16 bg-zinc-800 rounded-full" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-28 bg-zinc-800" /></TableCell>
                         <TableCell />
                       </TableRow>
                     ))
                   ) : keywords.length === 0 ? (
                     <TableRow className="border-zinc-800 hover:bg-transparent">
-                      <TableCell
-                        colSpan={5}
-                        className="h-24 text-center text-zinc-500 text-sm"
-                      >
+                      <TableCell colSpan={5} className="h-24 text-center text-zinc-500 text-sm">
                         No keywords configured. Add one above.
                       </TableCell>
                     </TableRow>

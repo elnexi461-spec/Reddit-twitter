@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { scoreLead } from "../lib/score.js";
 
 const MAX_LEADS = 100;
 const CONTENT_WINDOW = 50;
@@ -14,6 +15,8 @@ export interface Lead {
   title: string;
   url: string;
   timestamp: string;
+  score: number;
+  tier: "hot" | "warm" | "cool";
 }
 
 interface WorkerState {
@@ -27,6 +30,7 @@ interface BackupFile {
 }
 
 const leads: Lead[] = [];
+const seenIds = new Set<string>();
 const workerStatus: WorkerState = { reddit: "active", twitter: "active" };
 let startedAt = Date.now();
 
@@ -70,6 +74,18 @@ function saveToDisk(): void {
   }
 }
 
+function migrateScore(lead: Partial<Lead>): Lead {
+  if (lead.score === undefined || lead.tier === undefined) {
+    const { score, tier } = scoreLead(
+      lead.keyword ?? "",
+      lead.source ?? "",
+      lead.title ?? ""
+    );
+    return { ...(lead as Lead), score, tier };
+  }
+  return lead as Lead;
+}
+
 export function loadFromDisk(): void {
   if (!fs.existsSync(BACKUP_PATH)) return;
 
@@ -78,7 +94,15 @@ export function loadFromDisk(): void {
     const parsed: BackupFile = JSON.parse(raw);
 
     if (Array.isArray(parsed.leads)) {
-      leads.push(...parsed.leads.slice(0, MAX_LEADS));
+      const unique = parsed.leads
+        .map(migrateScore)
+        .filter((l) => {
+          if (seenIds.has(l.id)) return false;
+          seenIds.add(l.id);
+          return true;
+        })
+        .slice(0, MAX_LEADS);
+      leads.push(...unique);
     }
     if (Array.isArray(parsed.contentWindow)) {
       contentWindow.push(...parsed.contentWindow.slice(0, CONTENT_WINDOW));
@@ -94,10 +118,17 @@ export function loadFromDisk(): void {
 // Public API
 // ---------------------------------------------------------------------------
 
-export function pushLead(lead: Lead): void {
+export function pushLead(lead: Omit<Lead, "score" | "tier">): void {
+  if (seenIds.has(lead.id)) return;
   if (isDuplicateContent(lead.title)) return;
+  seenIds.add(lead.id);
   trackContent(lead.title);
-  leads.unshift(lead);
+
+  const { score, tier } = scoreLead(lead.keyword, lead.source, lead.title);
+  const full: Lead = { ...lead, score, tier };
+
+  leads.unshift(full);
+  leads.sort((a, b) => b.score - a.score);
   if (leads.length > MAX_LEADS) leads.length = MAX_LEADS;
   saveToDisk();
 }
