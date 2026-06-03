@@ -1,9 +1,5 @@
 import axios from "axios";
 
-// ---------------------------------------------------------------------------
-// Config
-// ---------------------------------------------------------------------------
-
 const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY ?? "";
 const RAPIDAPI_HOST = "twitter154.p.rapidapi.com";
 
@@ -15,10 +11,6 @@ const SEARCH_TERMS = [
 ];
 
 const POLL_INTERVAL_MS = 4 * 60 * 1000;
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 
 interface Tweet {
   id: string;
@@ -43,15 +35,7 @@ interface SearchResponse {
   next_cursor?: string;
 }
 
-// ---------------------------------------------------------------------------
-// State
-// ---------------------------------------------------------------------------
-
 const processed = new Set<string>();
-
-// ---------------------------------------------------------------------------
-// Core
-// ---------------------------------------------------------------------------
 
 async function searchTweets(query: string): Promise<Tweet[]> {
   const { data } = await axios.get<SearchResponse>(
@@ -77,7 +61,7 @@ async function searchTweets(query: string): Promise<Tweet[]> {
 function printLead(term: string, tweet: Tweet) {
   console.log(
     [
-      `\n🎯 LEAD — "${term}"`,
+      `\n🎯 TWITTER LEAD — "${term}"`,
       `  user : @${tweet.username}`,
       `  time : ${tweet.timestamp}`,
       `  text : ${tweet.text.replace(/\n/g, " ")}`,
@@ -95,7 +79,7 @@ async function pollTerm(term: string) {
     const msg = axios.isAxiosError(err)
       ? `${err.response?.status ?? "network"} — ${err.message}`
       : (err as Error).message;
-    console.error(`[twitter-leads] search failed for "${term}": ${msg}`);
+    console.error(`[twitter] search failed for "${term}": ${msg}`);
     return;
   }
 
@@ -108,29 +92,24 @@ async function pollTerm(term: string) {
   }
 
   if (fresh === 0) {
-    console.log(`[twitter-leads] "${term}" — no new leads`);
+    console.log(`[twitter] "${term}" — no new leads`);
   }
 }
 
 async function poll() {
-  console.log(`[twitter-leads] polling ${SEARCH_TERMS.length} terms…`);
+  console.log(`[twitter] polling ${SEARCH_TERMS.length} terms…`);
   for (const term of SEARCH_TERMS) {
     await pollTerm(term);
   }
 }
 
-// ---------------------------------------------------------------------------
-// Entry
-// ---------------------------------------------------------------------------
-
-if (!RAPIDAPI_KEY) {
-  console.error("[twitter-leads] RAPIDAPI_KEY is not set — exiting");
-  process.exit(1);
+export function start(): NodeJS.Timeout {
+  if (!RAPIDAPI_KEY) {
+    throw new Error("RAPIDAPI_KEY is not set");
+  }
+  console.log(
+    `[twitter] started — ${SEARCH_TERMS.length} terms, interval ${POLL_INTERVAL_MS / 1000}s`
+  );
+  poll();
+  return setInterval(poll, POLL_INTERVAL_MS);
 }
-
-console.log(
-  `[twitter-leads] started — ${SEARCH_TERMS.length} terms, interval ${POLL_INTERVAL_MS / 1000}s`
-);
-
-poll();
-setInterval(poll, POLL_INTERVAL_MS);

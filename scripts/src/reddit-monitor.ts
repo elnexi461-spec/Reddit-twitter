@@ -52,7 +52,7 @@ async function poll() {
     try {
       posts = await fetchNew(sub);
     } catch (err) {
-      console.error(`[reddit-monitor] r/${sub} fetch failed:`, (err as Error).message);
+      console.error(`[reddit] r/${sub} fetch failed:`, (err as Error).message);
       continue;
     }
 
@@ -65,7 +65,7 @@ async function poll() {
 
       console.log(
         [
-          `\n🔔 MATCH`,
+          `\n🔔 REDDIT MATCH`,
           `  subreddit : r/${post.subreddit}`,
           `  keyword   : "${kw}"`,
           `  title     : ${post.title}`,
@@ -76,9 +76,10 @@ async function poll() {
   }
 }
 
-console.log(
-  `[reddit-monitor] watching r/${config.subreddits.join(", r/")} every ${config.intervalMs / 1000}s`
-);
-
-poll();
-setInterval(poll, config.intervalMs);
+export function start(): NodeJS.Timeout {
+  console.log(
+    `[reddit] watching r/${config.subreddits.join(", r/")} every ${config.intervalMs / 1000}s`
+  );
+  poll();
+  return setInterval(poll, config.intervalMs);
+}
