@@ -132,8 +132,9 @@ export function loadFromDisk(): void {
       contentWindow.push(...parsed.contentWindow.slice(0, CONTENT_WINDOW));
     }
 
+    leads.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     console.log(
-      `[store] restored ${leads.length} leads from disk (${CURRENT_YEAR} only)`
+      `[store] restored ${leads.length} leads from disk (${CURRENT_YEAR} only, sorted by date desc)`
     );
   } catch (err) {
     console.error(
@@ -166,7 +167,7 @@ export function pushLead(
   const full: Lead = { ...lead, score, tier, claimed: false };
 
   leads.unshift(full);
-  leads.sort((a, b) => b.score - a.score);
+  leads.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   if (leads.length > MAX_LEADS) leads.length = MAX_LEADS;
   saveToDisk();
 }

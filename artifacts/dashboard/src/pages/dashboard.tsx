@@ -406,7 +406,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-zinc-100 tracking-tight">
                 Real-Time Activity Feed
-                <span className="ml-2 text-xs font-normal text-zinc-500">— sorted by urgency score · 2026 only</span>
+                <span className="ml-2 text-xs font-normal text-zinc-500">— newest first · 2026 only</span>
               </h2>
               {data && (
                 <span className="text-xs text-zinc-500 font-mono">Uptime: {formatUptime(data.uptime)}</span>
