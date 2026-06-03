@@ -1,6 +1,7 @@
 import axios from "axios";
 import { pushLead, setWorkerStatus } from "../store/leads.js";
 import { getRedditKeywords } from "../store/keywords.js";
+import { qualifyPost } from "../lib/qualify.js";
 
 const config = {
   subreddits: ["webscraping", "dataengineering", "sneakerbots"],
@@ -50,6 +51,8 @@ async function poll() {
   }
 
   let anySuccess = false;
+  let accepted = 0;
+  let rejected = 0;
 
   for (const sub of config.subreddits) {
     for (const kw of keywords) {
@@ -70,6 +73,13 @@ async function poll() {
         if (seen.has(post.id)) continue;
         seen.add(post.id);
 
+        // Hard qualification gate — reject posts without clear proxy intent
+        if (!qualifyPost(post.title, post.selftext ?? "")) {
+          rejected++;
+          continue;
+        }
+
+        accepted++;
         pushLead({
           id: post.id,
           source: "reddit",
@@ -80,12 +90,18 @@ async function poll() {
         });
 
         console.log(
-          `[reddit] match — r/${post.subreddit} — "${kw}" — ${post.title}`
+          `[reddit] ✓ qualified — r/${post.subreddit} — "${kw}" — ${post.title}`
         );
       }
 
       await new Promise((r) => setTimeout(r, 300));
     }
+  }
+
+  if (accepted + rejected > 0) {
+    console.log(
+      `[reddit] poll done — ${accepted} accepted, ${rejected} rejected`
+    );
   }
 
   setWorkerStatus("reddit", anySuccess ? "active" : "degraded");
