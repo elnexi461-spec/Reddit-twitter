@@ -66,46 +66,37 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* ─── Dark theme (default: html.dark) ─────────────────────────────────── */
 :root {
+  --app-font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --app-font-serif: Georgia, serif;
+  --app-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --radius: 0.5rem;
+}
+
+html.dark {
   color-scheme: dark;
-  --button-outline: rgba(255,255,255, .10);
-  --badge-outline: rgba(255,255,255, .05);
-
-  --opaque-button-border-intensity: 9;
-
-  --elevate-1: rgba(255,255,255, .04);
-  --elevate-2: rgba(255,255,255, .09);
-
   --background: 240 10% 4%;
   --foreground: 0 0% 98%;
-
   --border: 240 4% 16%;
   --input: 240 4% 16%;
   --ring: 240 5% 65%;
-
   --card: 240 10% 4%;
   --card-foreground: 0 0% 98%;
   --card-border: 240 4% 16%;
-
   --popover: 240 10% 4%;
   --popover-foreground: 0 0% 98%;
   --popover-border: 240 4% 16%;
-
   --primary: 0 0% 98%;
   --primary-foreground: 240 6% 10%;
-
   --secondary: 240 4% 16%;
   --secondary-foreground: 0 0% 98%;
-
   --muted: 240 4% 16%;
   --muted-foreground: 240 5% 65%;
-
   --accent: 240 4% 16%;
   --accent-foreground: 0 0% 98%;
-
   --destructive: 0 62% 30%;
   --destructive-foreground: 0 0% 98%;
-
   --sidebar: 240 10% 4%;
   --sidebar-foreground: 0 0% 98%;
   --sidebar-border: 240 4% 16%;
@@ -114,25 +105,78 @@
   --sidebar-accent: 240 4% 16%;
   --sidebar-accent-foreground: 0 0% 98%;
   --sidebar-ring: 240 5% 65%;
-
   --chart-1: 220 70% 50%;
   --chart-2: 160 60% 45%;
   --chart-3: 30 80% 55%;
   --chart-4: 280 65% 60%;
   --chart-5: 340 75% 55%;
-
-  --app-font-sans: 'Inter', system-ui, sans-serif;
-  --app-font-serif: Georgia, serif;
-  --app-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  --radius: 0.5rem;
 }
 
+/* ─── Light theme (html without .dark) ────────────────────────────────── */
+html:not(.dark) {
+  color-scheme: light;
+  --background: 240 20% 98%;
+  --foreground: 240 15% 8%;
+  --border: 240 8% 88%;
+  --input: 240 8% 88%;
+  --ring: 240 8% 60%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 15% 8%;
+  --card-border: 240 8% 88%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 15% 8%;
+  --popover-border: 240 8% 88%;
+  --primary: 221 90% 55%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 240 8% 94%;
+  --secondary-foreground: 240 15% 8%;
+  --muted: 240 8% 94%;
+  --muted-foreground: 240 8% 46%;
+  --accent: 240 8% 94%;
+  --accent-foreground: 240 15% 8%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+  --sidebar: 240 20% 97%;
+  --sidebar-foreground: 240 15% 8%;
+  --sidebar-border: 240 8% 88%;
+  --sidebar-primary: 221 90% 55%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 240 8% 94%;
+  --sidebar-accent-foreground: 240 15% 8%;
+  --sidebar-ring: 240 8% 60%;
+  --chart-1: 221 83% 53%;
+  --chart-2: 160 84% 39%;
+  --chart-3: 30 90% 55%;
+  --chart-4: 280 65% 60%;
+  --chart-5: 340 75% 55%;
+}
+
+/* ─── Base ─────────────────────────────────────────────────────────────── */
 @layer base {
   * {
     @apply border-border;
+    box-sizing: border-box;
+  }
+
+  html {
+    /* smooth scrolling, prevent horizontal overflow */
+    overflow-x: hidden;
+    scroll-behavior: smooth;
   }
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    overflow-x: hidden;
   }
+
+  /* Custom scrollbar (dark) */
+  html.dark ::-webkit-scrollbar { width: 5px; }
+  html.dark ::-webkit-scrollbar-track { background: transparent; }
+  html.dark ::-webkit-scrollbar-thumb { background: #2a2a3a; border-radius: 99px; }
+  html.dark ::-webkit-scrollbar-thumb:hover { background: #3a3a5a; }
+
+  /* Custom scrollbar (light) */
+  html:not(.dark) ::-webkit-scrollbar { width: 5px; }
+  html:not(.dark) ::-webkit-scrollbar-track { background: transparent; }
+  html:not(.dark) ::-webkit-scrollbar-thumb { background: #d0d0e0; border-radius: 99px; }
 }
