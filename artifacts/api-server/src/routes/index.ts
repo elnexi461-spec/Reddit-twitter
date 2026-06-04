@@ -1,9 +1,10 @@
 import { Router, type IRouter } from "express";
-import healthRouter from "./health";
-import activityRouter from "./activity";
-import exportRouter from "./export";
-import keywordsRouter from "./keywords";
-import leadsRouter from "./leads";
+import healthRouter from "./health.js";
+import activityRouter from "./activity.js";
+import exportRouter from "./export.js";
+import keywordsRouter from "./keywords.js";
+import leadsRouter from "./leads.js";
+import statsRouter from "./stats.js";
 
 const router: IRouter = Router();
 
@@ -12,5 +13,6 @@ router.use(activityRouter);
 router.use("/activity/export", exportRouter);
 router.use(keywordsRouter);
 router.use(leadsRouter);
+router.use(statsRouter);
 
 export default router;
