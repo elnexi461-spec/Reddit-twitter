@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, createContext, useContext } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Activity, Shield, Bell, Settings as SettingsIcon, Sun, Moon, Flame, Download } from "lucide-react";
+import {
+  Activity, Shield, Bell, Settings as SettingsIcon,
+  Sun, Moon, Flame, Download, Webhook,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import SplashScreen from "@/components/SplashScreen";
@@ -8,6 +11,7 @@ import HomeFeed from "@/components/tabs/HomeFeed";
 import SentinelMonitor from "@/components/tabs/SentinelMonitor";
 import Notifications from "@/components/tabs/Notifications";
 import SettingsTab from "@/components/tabs/Settings";
+import IntegrationsTab from "@/components/tabs/Integrations";
 import { useLeads } from "@/hooks/useLeads";
 import { useHotAlert } from "@/hooks/useHotAlert";
 import type { Lead } from "@/hooks/useLeads";
@@ -18,20 +22,25 @@ const ThemeContext = createContext<{ theme: Theme; toggle: () => void }>({ theme
 export const useTheme = () => useContext(ThemeContext);
 
 // ─── Tab config ───────────────────────────────────────────────────────────────
-type Tab = "feed" | "sentinel" | "notifications" | "settings";
+type Tab = "feed" | "sentinel" | "notifications" | "settings" | "integrations";
 
 const TABS: { id: Tab; label: string; mobileLabel: string; icon: React.ReactNode }[] = [
-  { id: "feed",          label: "Live Feed",   mobileLabel: "Feed",     icon: <Activity     className="w-5 h-5" /> },
-  { id: "sentinel",      label: "Sentinel",    mobileLabel: "Sentinel", icon: <Shield       className="w-5 h-5" /> },
-  { id: "notifications", label: "Analytics",   mobileLabel: "Analytics",icon: <Bell         className="w-5 h-5" /> },
-  { id: "settings",      label: "Settings",    mobileLabel: "Settings", icon: <SettingsIcon className="w-5 h-5" /> },
+  { id: "feed",          label: "Live Feed",     mobileLabel: "Feed",    icon: <Activity     className="w-5 h-5" /> },
+  { id: "sentinel",      label: "Sentinel",      mobileLabel: "Sentinel",icon: <Shield       className="w-5 h-5" /> },
+  { id: "notifications", label: "Analytics",     mobileLabel: "Stats",   icon: <Bell         className="w-5 h-5" /> },
+  { id: "integrations",  label: "Integrations",  mobileLabel: "Webhooks",icon: <Webhook      className="w-5 h-5" /> },
+  { id: "settings",      label: "Settings",      mobileLabel: "Settings",icon: <SettingsIcon className="w-5 h-5" /> },
 ];
+
+// Mobile nav shows only 4 most-used tabs; Settings accessed via desktop
+const MOBILE_TABS: Tab[] = ["feed", "sentinel", "notifications", "integrations"];
 
 const TAB_TITLES: Record<Tab, string> = {
   feed:          "Live Intelligence Feed",
   sentinel:      "Sentinel Monitor",
   notifications: "Analytics & Activity",
   settings:      "Engine Settings",
+  integrations:  "Integrations & Webhooks",
 };
 
 const TAB_SUBTITLES: Record<Tab, string> = {
@@ -39,6 +48,7 @@ const TAB_SUBTITLES: Record<Tab, string> = {
   sentinel:      "Live proxy infrastructure telemetry · updates every 2s",
   notifications: "Lead analytics, pipeline funnel, and activity log",
   settings:      "Keyword management, API status, engine configuration",
+  integrations:  "Node management endpoints · auto IP replacement · webhook config",
 };
 
 const tabVariants = {
@@ -61,8 +71,24 @@ function TopNav({
     >
       {/* Logo */}
       <div className="flex items-center gap-2.5 shrink-0 mr-1">
-        <div className="w-7 h-7 rounded-lg bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
-          <Activity className="w-3.5 h-3.5 text-blue-400" />
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+          style={{
+            background: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
+            border: "1px solid rgba(59,130,246,0.3)",
+            boxShadow: "0 0 8px rgba(59,130,246,0.15)",
+          }}
+        >
+          <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none">
+            <circle cx="12" cy="12" r="2.5" fill="#3b82f6" />
+            <circle cx="5" cy="7" r="1.5" fill="#60a5fa" opacity="0.8" />
+            <circle cx="19" cy="7" r="1.5" fill="#60a5fa" opacity="0.8" />
+            <circle cx="5" cy="17" r="1.5" fill="#60a5fa" opacity="0.8" />
+            <circle cx="19" cy="17" r="1.5" fill="#60a5fa" opacity="0.8" />
+            <line x1="12" y1="12" x2="5" y2="7" stroke="#3b82f6" strokeWidth="0.8" opacity="0.7" />
+            <line x1="12" y1="12" x2="19" y2="7" stroke="#3b82f6" strokeWidth="0.8" opacity="0.7" />
+            <line x1="12" y1="12" x2="5" y2="17" stroke="#3b82f6" strokeWidth="0.8" opacity="0.7" />
+            <line x1="12" y1="12" x2="19" y2="17" stroke="#3b82f6" strokeWidth="0.8" opacity="0.7" />
+          </svg>
         </div>
         <span className="font-bold text-sm tracking-tight dark:text-zinc-100 text-zinc-900">
           Proxies<span className="text-blue-400">.sx</span>
@@ -80,12 +106,12 @@ function TopNav({
       </div>
 
       {/* Tabs */}
-      <nav className="flex items-center gap-0.5 flex-1">
+      <nav className="flex items-center gap-0.5 flex-1 overflow-x-auto">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
-            className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-150
+            className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-150 whitespace-nowrap
               ${activeTab === tab.id
                 ? "dark:text-zinc-100 text-zinc-900"
                 : "dark:text-zinc-500 text-zinc-500 hover:dark:text-zinc-300 hover:text-zinc-700"
@@ -150,24 +176,27 @@ function TopNav({
   );
 }
 
-// ─── Mobile bottom nav ────────────────────────────────────────────────────────
+// ─── Mobile bottom nav (4 tabs) ───────────────────────────────────────────────
 function BottomNav({ activeTab, onTabChange, hotCount }: {
   activeTab: Tab; onTabChange: (t: Tab) => void; hotCount: number;
 }) {
+  const mobileTabs = TABS.filter((t) => MOBILE_TABS.includes(t.id));
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-30 h-16
       dark:bg-[#07070e]/95 bg-white/95 backdrop-blur-xl
       border-t dark:border-zinc-800 border-zinc-200
       flex items-center justify-around px-2"
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      {TABS.map((tab) => {
+      {mobileTabs.map((tab) => {
         const isActive = activeTab === tab.id;
         const showBadge = tab.id === "feed" && hotCount > 0;
         return (
           <button
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
-            className="relative flex flex-col items-center justify-center gap-0.5 w-16 h-12 rounded-xl"
+            className="relative flex flex-col items-center justify-center gap-0.5 flex-1 h-12 rounded-xl"
           >
             {isActive && (
               <motion.span
@@ -180,7 +209,7 @@ function BottomNav({ activeTab, onTabChange, hotCount }: {
               ${isActive ? "dark:text-zinc-100 text-zinc-900" : "dark:text-zinc-600 text-zinc-400"}`}>
               {tab.icon}
             </span>
-            <span className={`relative text-[9px] font-semibold transition-colors duration-150
+            <span className={`relative text-[9px] font-semibold transition-colors duration-150 leading-none
               ${isActive ? "dark:text-zinc-200 text-zinc-700" : "dark:text-zinc-600 text-zinc-400"}`}>
               {tab.mobileLabel}
             </span>
@@ -232,9 +261,9 @@ export default function Dashboard() {
     theme === "dark" ? html.classList.add("dark") : html.classList.remove("dark");
   }, [theme]);
 
-  // Splash timer
+  // Splash timer — 2 seconds as specified
   useEffect(() => {
-    const t = setTimeout(() => setShowSplash(false), 950);
+    const t = setTimeout(() => setShowSplash(false), 2000);
     return () => clearTimeout(t);
   }, []);
 
@@ -258,14 +287,14 @@ export default function Dashboard() {
 
   return (
     <ThemeContext.Provider value={{ theme, toggle: toggleTheme }}>
-      {/* Splash */}
+      {/* Splash — 2 second branded intro */}
       <AnimatePresence>
         {showSplash && (
           <motion.div
             key="splash"
             initial={{ opacity: 1 }}
             exit={{ opacity: 0, scale: 0.99 }}
-            transition={{ duration: 0.45, ease: "easeIn" }}
+            transition={{ duration: 0.4, ease: "easeIn" }}
           >
             <SplashScreen />
           </motion.div>
@@ -276,7 +305,7 @@ export default function Dashboard() {
       <HotFlashOverlay active={flashActive} />
 
       {/* Main app */}
-      <div className="min-h-screen dark:bg-[#07070e] bg-[#f6f6fc] font-sans">
+      <div className="min-h-screen dark:bg-[#07070e] bg-[#f6f6fc]" style={{ fontFamily: "'Inter', sans-serif" }}>
 
         {/* Desktop top nav */}
         <div className="hidden sm:block">
@@ -291,8 +320,19 @@ export default function Dashboard() {
           dark:bg-[#07070e]/90 bg-white/90 backdrop-blur-xl border-b dark:border-zinc-800/70 border-zinc-200"
         >
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-blue-500/20 flex items-center justify-center border border-blue-500/25">
-              <Activity className="w-3 h-3 text-blue-400" />
+            <div className="w-6 h-6 rounded-md flex items-center justify-center"
+              style={{
+                background: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
+                border: "1px solid rgba(59,130,246,0.3)",
+              }}
+            >
+              <svg viewBox="0 0 24 24" className="w-3 h-3" fill="none">
+                <circle cx="12" cy="12" r="2.5" fill="#3b82f6" />
+                <circle cx="5" cy="7" r="1.5" fill="#60a5fa" opacity="0.8" />
+                <circle cx="19" cy="7" r="1.5" fill="#60a5fa" opacity="0.8" />
+                <line x1="12" y1="12" x2="5" y2="7" stroke="#3b82f6" strokeWidth="0.8" opacity="0.7" />
+                <line x1="12" y1="12" x2="19" y2="7" stroke="#3b82f6" strokeWidth="0.8" opacity="0.7" />
+              </svg>
             </div>
             <span className="font-bold text-[13px] dark:text-zinc-100 text-zinc-900">
               Proxies<span className="text-blue-400">.sx</span>
@@ -314,11 +354,19 @@ export default function Dashboard() {
             >
               {theme === "dark" ? <Sun className="w-3 h-3 text-zinc-400" /> : <Moon className="w-3 h-3 text-zinc-500" />}
             </button>
+            {/* Settings accessible from mobile top bar */}
+            <button
+              onClick={() => setActiveTab("settings")}
+              className={`w-7 h-7 rounded-lg flex items-center justify-center dark:bg-zinc-900 bg-zinc-100 dark:border dark:border-zinc-800 border border-zinc-200
+                ${activeTab === "settings" ? "dark:text-zinc-100 text-zinc-900" : "dark:text-zinc-500 text-zinc-400"}`}
+            >
+              <SettingsIcon className="w-3 h-3" />
+            </button>
           </div>
         </div>
 
         {/* Content area */}
-        <main className="mx-auto max-w-3xl px-4 pt-[calc(3rem+1rem)] pb-[calc(4.5rem+1rem)] sm:pt-[calc(3.5rem+1.5rem)] sm:pb-10">
+        <main className="mx-auto max-w-3xl px-4 pt-[calc(3rem+1rem)] pb-[calc(4.5rem+1.5rem)] sm:pt-[calc(3.5rem+1.5rem)] sm:pb-10">
 
           {/* Desktop page heading */}
           <div className="hidden sm:flex items-center justify-between mb-5">
@@ -328,7 +376,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Tab content with slide transition */}
+          {/* Tab content with smooth Framer Motion transitions */}
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={activeTab}
@@ -342,6 +390,7 @@ export default function Dashboard() {
               {activeTab === "feed"          && <HomeFeed />}
               {activeTab === "sentinel"      && <SentinelMonitor />}
               {activeTab === "notifications" && <Notifications />}
+              {activeTab === "integrations"  && <IntegrationsTab />}
               {activeTab === "settings"      && (
                 <SettingsTab
                   theme={theme}
@@ -354,7 +403,7 @@ export default function Dashboard() {
           </AnimatePresence>
         </main>
 
-        {/* Mobile bottom nav */}
+        {/* Mobile bottom nav — 4 primary tabs */}
         <div className="sm:hidden">
           <BottomNav activeTab={activeTab} onTabChange={setActiveTab} hotCount={hotCount} />
         </div>

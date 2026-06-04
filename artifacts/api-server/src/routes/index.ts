@@ -5,6 +5,7 @@ import exportRouter from "./export.js";
 import keywordsRouter from "./keywords.js";
 import leadsRouter from "./leads.js";
 import statsRouter from "./stats.js";
+import integrationsRouter from "./integrations.js";
 
 const router: IRouter = Router();
 
@@ -14,5 +15,6 @@ router.use("/activity/export", exportRouter);
 router.use(keywordsRouter);
 router.use(leadsRouter);
 router.use(statsRouter);
+router.use(integrationsRouter);
 
 export default router;

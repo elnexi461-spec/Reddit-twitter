@@ -1,0 +1,8 @@
+{
+  "nodeManagementEndpoint": "",
+  "apiKey": "",
+  "webhookSecret": "",
+  "autoReplaceOnDrop": true,
+  "autoReplaceOnAbuse": true,
+  "updatedAt": "2026-06-04T22:57:33.781Z"
+}

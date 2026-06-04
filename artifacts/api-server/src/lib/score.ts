@@ -5,17 +5,34 @@ export interface ScoredLead {
   tier: ScoreTier;
 }
 
+// Symptom keywords = highest intent (user is actively blocked, needs a fix NOW)
 const HIGH_INTENT_KEYWORDS = new Set([
   "residential ip",
   "getting blocked",
   "scraping blocked",
   "need proxies",
   "clean residential proxy",
+  // Upgrade 1: symptom keywords are max-intent
+  "cloudflare turnstile",
+  "blocked from website",
+  "datadome",
+  "playwright timeout",
+  "puppeteer captcha",
+  "access denied scraping",
+  "bypass turnstile",
+  "403 forbidden scraper",
+  "ip banned scraping",
+  "getting 429",
+  "imperva bypass",
+  "perimeterx block",
+  "akamai bot detection",
+  "browser fingerprint detect",
 ]);
 
 const MED_INTENT_KEYWORDS = new Set([
   "proxies",
   "sneaker proxy",
+  "proxy",
 ]);
 
 const INTENT_WORDS = [
@@ -52,13 +69,24 @@ const INTENT_WORDS = [
   "bypass",
   "evade",
   "getting 403",
+  "getting 429",
   "getting banned",
   "ip banned",
+  // Symptom words
+  "turnstile",
+  "datadome",
+  "playwright",
+  "puppeteer",
+  "headless",
+  "fingerprint",
+  "access denied",
+  "timeout",
+  "captcha",
 ];
 
 function keywordScore(keyword: string): number {
   const kw = keyword.toLowerCase();
-  if (HIGH_INTENT_KEYWORDS.has(kw)) return 40;
+  if (HIGH_INTENT_KEYWORDS.has(kw)) return 45;
   if (MED_INTENT_KEYWORDS.has(kw)) return 25;
   return 10;
 }

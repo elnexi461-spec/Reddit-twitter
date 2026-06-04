@@ -9,7 +9,7 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { useLeads, type Lead, type PipelineStatus } from "@/hooks/useLeads";
-import OutreachDrawer from "@/components/OutreachDrawer";
+import OutreachModal from "@/components/OutreachModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -687,8 +687,8 @@ export default function HomeFeed() {
         )}
       </AnimatePresence>
 
-      {/* Outreach Drawer */}
-      <OutreachDrawer lead={drawerLead} onClose={() => setDrawerLead(null)} />
+      {/* Outreach Modal — full-screen centered, not bottom drawer */}
+      <OutreachModal lead={drawerLead} onClose={() => setDrawerLead(null)} />
     </div>
   );
 }

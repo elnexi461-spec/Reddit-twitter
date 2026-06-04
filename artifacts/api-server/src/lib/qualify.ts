@@ -2,8 +2,8 @@
  * qualify.ts — Hard lead-qualification gate.
  *
  * A post only qualifies if the combined text (title + body) matches at least
- * one of the HIGH-INTENT proxy signals below.  This runs BEFORE pushLead() so
- * irrelevant content never enters the store.
+ * one of the HIGH-INTENT proxy signals below OR one of the SYMPTOM signals.
+ * Symptom signals catch proxy-need posts that don't use the word "proxy".
  */
 
 // ---------------------------------------------------------------------------
@@ -72,6 +72,40 @@ const PROXY_SIGNALS: RegExp[] = [
   /\bprox(y|ies)\s+(are|is|was|were|keep(s)?|keeps?|got|getting)\s+(block(ed)?|ban(ned)?|detect(ed)?|flag(ged)?|throttl)/i,
   /\b(detected|flagged|throttled)[\s\w]{0,30}prox(y|ies)\b/i,
   /\bproxy[\s\w]{0,20}(leak(s|ing)?|expos(e|ing|ed)|fingerprint)/i,
+
+  // ─── UPGRADE 1: Symptom signals ─────────────────────────────────────────
+  // These catch proxy-need posts that don't use the word "proxy" at all.
+
+  // --- Cloudflare Turnstile ---
+  /cloudflare[\s\-]?turnstile/i,
+  /turnstile[\s\w]{0,20}(bypass|block|fail|error|challeng|solv)/i,
+  /bypass[\s\w]{0,15}turnstile/i,
+
+  // --- DataDome ---
+  /datadome[\s\-]?(block|detect|bypass|error|challenge|protection)/i,
+  /blocked[\s\w]{0,20}datadome/i,
+  /\bdatadome\b/i,
+
+  // --- Playwright / Puppeteer automation failures ---
+  /playwright[\s\w]{0,20}(timeout|block|detect|captcha|fail|error|challeng)/i,
+  /puppeteer[\s\w]{0,20}(captcha|block|detect|timeout|fail|challeng|ban)/i,
+  /(playwright|puppeteer|selenium|playwright)[\s\w]{0,30}(block|detect|banned|challeng)/i,
+
+  // --- Access denied ---
+  /access[\s\-]?denied[\s\w]{0,20}(scrap|crawl|automat|bot|request)/i,
+  /(website|site|page)[\s\w]{0,20}block(s|ed|ing)?[\s\w]{0,20}(bot|scrap|crawl|automat)/i,
+  /blocked[\s\w]{0,20}(website|site|access|request)/i,
+  /\bblocked[\s\w]{0,15}(from[\s\w]{0,10})?(scraping|crawling|accessing|fetching)/i,
+
+  // --- General scraping/automation blocking ---
+  /web[\s\-]?scrap(ing|er)[\s\w]{0,20}(block|detect|ban|fail|challeng|captcha)/i,
+  /(block|detect|ban)[\s\w]{0,20}web[\s\-]?scrap/i,
+  /headless[\s\w]{0,20}(detect|block|ban|challeng)/i,
+  /automation[\s\w]{0,20}detect(ed|ion)/i,
+  /\bstealth(y)?[\s\-]*(mode|browser|puppeteer|playwright)\b/i,
+  /fingerprint[\s\w]{0,20}(bypass|evad|detect|block)/i,
+  /js[\s\-]?challenge/i,
+  /browser[\s\-]?challenge/i,
 ];
 
 // ---------------------------------------------------------------------------

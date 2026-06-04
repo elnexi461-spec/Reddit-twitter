@@ -1,0 +1,3 @@
+- [Integrations store pattern](integrations-store.md) — new webhook/integrations config stored at data/integrations_config.json, loaded in index.ts; API at /api/integrations/*
+- [Outreach is a modal not a drawer](outreach-modal.md) — OutreachDrawer.tsx replaced by OutreachModal.tsx (centered full-screen); HomeFeed imports OutreachModal
+- [Symptom keywords](symptom-keywords.md) — qualify.ts and keywords.ts extended with 14+ symptom signal keywords (cloudflare turnstile, datadome, playwright timeout, etc.)
