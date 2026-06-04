@@ -4,14 +4,15 @@ import {
   ExternalLink, UserCheck, Check, Flame, Thermometer, Minus,
   Search, SlidersHorizontal, LayoutGrid, List,
   MessageSquare, StickyNote, ChevronRight, ChevronLeft,
-  AlertCircle, RefreshCw, X,
+  AlertCircle, RefreshCw, X, ChevronLeft as PrevIcon, ChevronRight as NextIcon,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { useLeads, type Lead, type PipelineStatus } from "@/hooks/useLeads";
-import OutreachModal from "@/components/OutreachModal";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+const PAGE_SIZE = 10;
+
+// ─── Pipeline config ─────────────────────────────────────────────────────────
 
 const PIPELINE_STAGES: { status: PipelineStatus; label: string }[] = [
   { status: "unclaimed",  label: "Unclaimed" },
@@ -21,9 +22,9 @@ const PIPELINE_STAGES: { status: PipelineStatus; label: string }[] = [
 ];
 
 const PIPELINE_STYLES: Record<PipelineStatus, { pill: string; dot: string }> = {
-  unclaimed: { pill: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",  dot: "bg-zinc-500" },
-  contacted: { pill: "bg-blue-500/10 text-blue-400 border-blue-500/20",  dot: "bg-blue-500" },
-  qualified: { pill: "bg-amber-500/10 text-amber-400 border-amber-500/20", dot: "bg-amber-500" },
+  unclaimed: { pill: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",     dot: "bg-zinc-500" },
+  contacted: { pill: "bg-blue-500/10 text-blue-400 border-blue-500/20",     dot: "bg-blue-500" },
+  qualified: { pill: "bg-amber-500/10 text-amber-400 border-amber-500/20",  dot: "bg-amber-500" },
   converted: { pill: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", dot: "bg-emerald-500" },
 };
 
@@ -120,14 +121,14 @@ function PipelinePill({ status, onChange }: { status: PipelineStatus; onChange: 
 // ─── Lead Card ────────────────────────────────────────────────────────────────
 
 function LeadCard({
-  lead, index, isFocused, isClaiming, onClaim, onOpenDrawer, onPipelineChange, onNoteAdd,
+  lead, index, isFocused, isClaiming, onClaim, onOpenOutreach, onPipelineChange, onNoteAdd,
 }: {
   lead: Lead;
   index: number;
   isFocused: boolean;
   isClaiming: boolean;
   onClaim: () => void;
-  onOpenDrawer: () => void;
+  onOpenOutreach: () => void;
   onPipelineChange: (status: PipelineStatus) => void;
   onNoteAdd: (text: string) => void;
 }) {
@@ -154,7 +155,7 @@ function LeadCard({
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-      transition={{ delay: Math.min(index * 0.03, 0.4), duration: 0.2, ease: "easeOut" }}
+      transition={{ delay: Math.min(index * 0.03, 0.3), duration: 0.2, ease: "easeOut" }}
       className={`relative rounded-xl border transition-all duration-200 overflow-hidden group
         ${isFocused ? "ring-2 ring-blue-500/50 ring-offset-0 dark:ring-offset-0" : ""}
         ${lead.claimed ? "opacity-60" : ""}
@@ -163,7 +164,6 @@ function LeadCard({
           : "dark:bg-zinc-900/40 bg-white border-zinc-200 dark:border-zinc-800/70"
         }`}
     >
-      {/* Pipeline left-border accent */}
       <div className={`absolute left-0 top-0 bottom-0 w-0.5
         ${lead.pipelineStatus === "contacted" ? "bg-blue-500"
           : lead.pipelineStatus === "qualified" ? "bg-amber-500"
@@ -173,7 +173,6 @@ function LeadCard({
       />
 
       <div className="p-4 pl-5">
-        {/* Header */}
         <div className="flex items-center gap-2 mb-2.5 flex-wrap">
           <SourceBadge source={lead.source} />
           <TierBadge tier={lead.tier} score={lead.score} />
@@ -183,19 +182,16 @@ function LeadCard({
           </span>
         </div>
 
-        {/* Title */}
         <p className="text-sm font-medium leading-snug dark:text-zinc-100 text-zinc-900 line-clamp-2 mb-2">
           {lead.title}
         </p>
 
-        {/* Keyword */}
         <div className="mb-3">
           <code className="text-[10px] px-1.5 py-0.5 rounded dark:bg-zinc-800 bg-zinc-100 dark:text-zinc-400 text-zinc-500 font-mono">
             {lead.keyword}
           </code>
         </div>
 
-        {/* Actions */}
         <div className="flex items-center gap-2 flex-wrap">
           <a
             href={lead.url} target="_blank" rel="noreferrer"
@@ -224,8 +220,9 @@ function LeadCard({
             </button>
           )}
 
+          {/* Reach Out — navigates to a dedicated sub-page, no scrolling */}
           <button
-            onClick={onOpenDrawer}
+            onClick={onOpenOutreach}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
               dark:bg-violet-500/10 bg-violet-50 dark:text-violet-400 text-violet-600
               dark:border dark:border-violet-500/20 border border-violet-200
@@ -245,7 +242,6 @@ function LeadCard({
           </button>
         </div>
 
-        {/* Notes section */}
         <AnimatePresence>
           {showNote && (
             <motion.div
@@ -269,7 +265,10 @@ function LeadCard({
                     ref={noteRef}
                     value={noteText}
                     onChange={(e) => setNoteText(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleNoteSubmit(); } if (e.key === "Escape") setShowNote(false); }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleNoteSubmit(); }
+                      if (e.key === "Escape") setShowNote(false);
+                    }}
                     placeholder="Add a note… (Enter to save, Esc to close)"
                     rows={2}
                     className="flex-1 text-xs px-3 py-2 rounded-lg resize-none
@@ -302,18 +301,19 @@ function LeadCard({
 
 // ─── Pipeline Board ────────────────────────────────────────────────────────────
 
-function PipelineMiniCard({ lead, onMove, onOpenDrawer }: {
+function PipelineMiniCard({ lead, onMove, onOpenOutreach }: {
   lead: Lead;
   onMove: (s: PipelineStatus) => void;
-  onOpenDrawer: () => void;
+  onOpenOutreach: () => void;
 }) {
   const stageIdx = PIPELINE_STAGES.findIndex((s) => s.status === (lead.pipelineStatus ?? "unclaimed"));
   const canPrev = stageIdx > 0;
   const canNext = stageIdx < PIPELINE_STAGES.length - 1;
 
   return (
-    <div className="rounded-xl border dark:bg-zinc-900/60 bg-white dark:border-zinc-800 border-zinc-200 p-3 space-y-2 hover:dark:bg-zinc-900 hover:bg-zinc-50 transition-colors cursor-pointer group"
-      onClick={onOpenDrawer}
+    <div
+      className="rounded-xl border dark:bg-zinc-900/60 bg-white dark:border-zinc-800 border-zinc-200 p-3 space-y-2 hover:dark:bg-zinc-900 hover:bg-zinc-50 transition-colors cursor-pointer group"
+      onClick={onOpenOutreach}
     >
       <div className="flex items-center gap-1.5 flex-wrap">
         <SourceBadge source={lead.source} />
@@ -343,10 +343,10 @@ function PipelineMiniCard({ lead, onMove, onOpenDrawer }: {
   );
 }
 
-function PipelineBoard({ leads, onPipelineChange, onOpenDrawer }: {
+function PipelineBoard({ leads, onPipelineChange, onOpenOutreach }: {
   leads: Lead[];
   onPipelineChange: (id: string, status: PipelineStatus) => void;
-  onOpenDrawer: (lead: Lead) => void;
+  onOpenOutreach: (lead: Lead) => void;
 }) {
   const groups = useMemo(() => {
     const map: Record<PipelineStatus, Lead[]> = { unclaimed: [], contacted: [], qualified: [], converted: [] };
@@ -373,7 +373,7 @@ function PipelineBoard({ leads, onPipelineChange, onOpenDrawer }: {
                   <PipelineMiniCard
                     lead={lead}
                     onMove={(s) => onPipelineChange(lead.id, s)}
-                    onOpenDrawer={() => onOpenDrawer(lead)}
+                    onOpenOutreach={() => onOpenOutreach(lead)}
                   />
                 </motion.div>
               ))}
@@ -397,8 +397,7 @@ function FilterBar({
   filterTier, setFilterTier,
   filterText, setFilterText,
   sortOrder, setSortOrder,
-  resultCount,
-  searchRef,
+  resultCount, searchRef,
 }: {
   filterSource: string; setFilterSource: (s: any) => void;
   filterTier: string; setFilterTier: (s: any) => void;
@@ -409,13 +408,12 @@ function FilterBar({
 }) {
   return (
     <div className="space-y-2">
-      {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 dark:text-zinc-500 text-zinc-400" />
         <input
           ref={searchRef as React.RefObject<HTMLInputElement>}
           type="text"
-          placeholder='Search leads… (press / to focus)'
+          placeholder="Search leads… (press / to focus)"
           value={filterText}
           onChange={(e) => setFilterText(e.target.value)}
           className="w-full pl-9 pr-9 py-2 text-sm rounded-xl dark:bg-zinc-900 bg-white
@@ -430,46 +428,31 @@ function FilterBar({
         )}
       </div>
 
-      {/* Filters row */}
       <div className="flex items-center gap-2 flex-wrap">
-        {/* Source */}
         <div className="flex items-center gap-1 dark:bg-zinc-900 bg-zinc-100 rounded-lg p-1 border dark:border-zinc-800 border-zinc-200">
           {(["all", "reddit", "HN"] as const).map((src) => (
-            <button
-              key={src}
-              onClick={() => setFilterSource(src)}
+            <button key={src} onClick={() => setFilterSource(src)}
               className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all
-                ${filterSource === src
-                  ? "dark:bg-zinc-700 bg-white shadow-sm dark:text-zinc-100 text-zinc-900"
-                  : "dark:text-zinc-500 text-zinc-500 hover:dark:text-zinc-300 hover:text-zinc-700"
-                }`}
+                ${filterSource === src ? "dark:bg-zinc-700 bg-white shadow-sm dark:text-zinc-100 text-zinc-900" : "dark:text-zinc-500 text-zinc-500 hover:dark:text-zinc-300 hover:text-zinc-700"}`}
             >
               {src === "all" ? "All" : src === "reddit" ? "Reddit" : "HN"}
             </button>
           ))}
         </div>
 
-        {/* Tier */}
         <div className="flex items-center gap-1 dark:bg-zinc-900 bg-zinc-100 rounded-lg p-1 border dark:border-zinc-800 border-zinc-200">
           {(["all", "hot", "warm", "cool"] as const).map((tier) => (
-            <button
-              key={tier}
-              onClick={() => setFilterTier(tier)}
+            <button key={tier} onClick={() => setFilterTier(tier)}
               className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all capitalize
-                ${filterTier === tier
-                  ? "dark:bg-zinc-700 bg-white shadow-sm dark:text-zinc-100 text-zinc-900"
-                  : "dark:text-zinc-500 text-zinc-500 hover:dark:text-zinc-300 hover:text-zinc-700"
-                }
+                ${filterTier === tier ? "dark:bg-zinc-700 bg-white shadow-sm dark:text-zinc-100 text-zinc-900" : "dark:text-zinc-500 text-zinc-500 hover:dark:text-zinc-300 hover:text-zinc-700"}
                 ${tier === "hot" && filterTier === "hot" ? "!text-red-400" : ""}
-                ${tier === "warm" && filterTier === "warm" ? "!text-amber-400" : ""}
-              `}
+                ${tier === "warm" && filterTier === "warm" ? "!text-amber-400" : ""}`}
             >
               {tier === "hot" ? "🔥 Hot" : tier === "all" ? "All" : tier.charAt(0).toUpperCase() + tier.slice(1)}
             </button>
           ))}
         </div>
 
-        {/* Sort */}
         <div className="flex items-center gap-1 ml-auto">
           <SlidersHorizontal className="w-3 h-3 dark:text-zinc-600 text-zinc-400" />
           <select
@@ -484,7 +467,6 @@ function FilterBar({
           </select>
         </div>
 
-        {/* Count */}
         {(filterSource !== "all" || filterTier !== "all" || filterText) && (
           <span className="text-[10px] dark:text-zinc-500 text-zinc-400">
             {resultCount} result{resultCount !== 1 ? "s" : ""}
@@ -495,9 +477,61 @@ function FilterBar({
   );
 }
 
+// ─── Pagination bar ───────────────────────────────────────────────────────────
+
+function Pagination({ page, totalPages, total, onPrev, onNext }: {
+  page: number;
+  totalPages: number;
+  total: number;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const start = page * PAGE_SIZE + 1;
+  const end = Math.min((page + 1) * PAGE_SIZE, total);
+
+  return (
+    <div className="flex items-center justify-between py-2 border-t dark:border-zinc-800 border-zinc-200 mt-2">
+      <span className="text-[11px] dark:text-zinc-500 text-zinc-400">
+        Showing <span className="font-semibold dark:text-zinc-300 text-zinc-700">{start}–{end}</span> of{" "}
+        <span className="font-semibold dark:text-zinc-300 text-zinc-700">{total}</span> leads
+      </span>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={onPrev}
+          disabled={page === 0}
+          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
+            dark:bg-zinc-800 bg-zinc-100 dark:text-zinc-300 text-zinc-600
+            dark:border dark:border-zinc-700 border border-zinc-200
+            hover:dark:bg-zinc-700 hover:bg-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed active:scale-95"
+        >
+          <PrevIcon className="w-3.5 h-3.5" /> Prev
+        </button>
+        <span className="px-2.5 py-1.5 rounded-lg text-xs font-semibold dark:text-zinc-400 text-zinc-600
+          dark:bg-zinc-900 bg-zinc-50 border dark:border-zinc-800 border-zinc-200">
+          {page + 1} / {totalPages}
+        </span>
+        <button
+          onClick={onNext}
+          disabled={page >= totalPages - 1}
+          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
+            dark:bg-zinc-800 bg-zinc-100 dark:text-zinc-300 text-zinc-600
+            dark:border dark:border-zinc-700 border border-zinc-200
+            hover:dark:bg-zinc-700 hover:bg-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed active:scale-95"
+        >
+          Next <NextIcon className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main HomeFeed ────────────────────────────────────────────────────────────
 
-export default function HomeFeed() {
+interface HomeFeedProps {
+  onReachOut: (lead: Lead) => void;
+}
+
+export default function HomeFeed({ onReachOut }: HomeFeedProps) {
   const {
     data, filteredLeads, leads, error,
     filterSource, setFilterSource,
@@ -509,17 +543,32 @@ export default function HomeFeed() {
 
   const [viewMode, setViewMode] = useState<"feed" | "pipeline">("feed");
   const [focusedIndex, setFocusedIndex] = useState(-1);
-  const [drawerLead, setDrawerLead] = useState<Lead | null>(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const searchRef = useRef<HTMLInputElement | null>(null);
 
-  // Stats strip
+  // Stats
   const hotCount = leads.filter((l) => l.tier === "hot").length;
   const claimedCount = leads.filter((l) => l.claimed).length;
   const claimRate = leads.length ? Math.round((claimedCount / leads.length) * 100) : 0;
 
+  // Reset to page 1 whenever filters or sort changes
+  useEffect(() => { setCurrentPage(0); }, [filterSource, filterTier, filterText, sortOrder]);
+
+  // Paginate
+  const totalPages = Math.max(1, Math.ceil(filteredLeads.length / PAGE_SIZE));
+  const pagedLeads = filteredLeads.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+
+  // Refresh with 3-second spin
+  const handleRefresh = useCallback(() => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    refetch();
+    setTimeout(() => setIsRefreshing(false), 3000);
+  }, [isRefreshing, refetch]);
+
   // Keyboard shortcuts
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (drawerLead) { if (e.key === "Escape") setDrawerLead(null); return; }
     const target = e.target as HTMLElement;
     const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA";
 
@@ -533,25 +582,27 @@ export default function HomeFeed() {
 
     if (e.key === "j" || e.key === "ArrowDown") {
       e.preventDefault();
-      setFocusedIndex((i) => Math.min(i + 1, filteredLeads.length - 1));
+      setFocusedIndex((i) => Math.min(i + 1, pagedLeads.length - 1));
     }
     if (e.key === "k" || e.key === "ArrowUp") {
       e.preventDefault();
       setFocusedIndex((i) => Math.max(i - 1, 0));
     }
     if (e.key === "c" && focusedIndex >= 0) {
-      const lead = filteredLeads[focusedIndex];
+      const lead = pagedLeads[focusedIndex];
       if (lead && !lead.claimed) claimLead(lead).then(() => toast.success("Lead claimed!"));
     }
     if (e.key === "o" && focusedIndex >= 0) {
-      const lead = filteredLeads[focusedIndex];
+      const lead = pagedLeads[focusedIndex];
       if (lead) window.open(lead.url, "_blank");
     }
     if (e.key === "t" && focusedIndex >= 0) {
-      const lead = filteredLeads[focusedIndex];
-      if (lead) setDrawerLead(lead);
+      const lead = pagedLeads[focusedIndex];
+      if (lead) onReachOut(lead);
     }
-  }, [drawerLead, filteredLeads, focusedIndex, claimLead]);
+    if (e.key === "ArrowRight") { if (currentPage < totalPages - 1) setCurrentPage((p) => p + 1); }
+    if (e.key === "ArrowLeft")  { if (currentPage > 0) setCurrentPage((p) => p - 1); }
+  }, [pagedLeads, focusedIndex, claimLead, onReachOut, currentPage, totalPages]);
 
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);
@@ -585,16 +636,23 @@ export default function HomeFeed() {
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
             </span>
             <span className="text-[11px] font-medium dark:text-zinc-400 text-zinc-600">
-              {data.totalLeads} total · <span className="text-red-400">{hotCount} 🔥</span> · {claimRate}% claimed
+              {data.totalLeads} leads · <span className="text-red-400">{hotCount} 🔥</span> · {claimRate}% claimed
             </span>
           </div>
-          <button onClick={refetch}
-            className="inline-flex items-center gap-1 text-[11px] dark:text-zinc-500 text-zinc-400 hover:dark:text-zinc-300 hover:text-zinc-600 transition-colors">
-            <RefreshCw className="w-3 h-3" /> Refresh
+
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="inline-flex items-center gap-1.5 text-[11px] font-medium transition-colors
+              dark:text-zinc-500 text-zinc-400 hover:dark:text-zinc-300 hover:text-zinc-600 disabled:cursor-wait"
+          >
+            <RefreshCw className={`w-3 h-3 transition-all duration-300 ${isRefreshing ? "animate-spin text-blue-400" : ""}`} />
+            {isRefreshing ? "Fetching…" : "Refresh"}
           </button>
-          {/* Keyboard hint */}
+
           <span className="hidden sm:flex items-center gap-2 text-[10px] dark:text-zinc-700 text-zinc-400 ml-auto">
             <kbd className="px-1.5 py-0.5 rounded dark:bg-zinc-800 bg-zinc-200 font-mono">j/k</kbd> nav
+            <kbd className="px-1.5 py-0.5 rounded dark:bg-zinc-800 bg-zinc-200 font-mono">←/→</kbd> page
             <kbd className="px-1.5 py-0.5 rounded dark:bg-zinc-800 bg-zinc-200 font-mono">c</kbd> claim
             <kbd className="px-1.5 py-0.5 rounded dark:bg-zinc-800 bg-zinc-200 font-mono">t</kbd> reach out
             <kbd className="px-1.5 py-0.5 rounded dark:bg-zinc-800 bg-zinc-200 font-mono">/</kbd> search
@@ -640,9 +698,7 @@ export default function HomeFeed() {
       {/* Content */}
       <AnimatePresence mode="wait" initial={false}>
         {viewMode === "feed" ? (
-          <motion.div key="feed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }} className="space-y-3"
-          >
+          <motion.div key="feed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="space-y-3">
             {!data ? (
               Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="h-[130px] rounded-xl dark:bg-zinc-900/40 bg-zinc-100 border dark:border-zinc-800 border-zinc-200 animate-pulse" />
@@ -657,38 +713,46 @@ export default function HomeFeed() {
                 </button>
               </div>
             ) : (
-              <AnimatePresence mode="popLayout">
-                {filteredLeads.map((lead, i) => (
-                  <LeadCard
-                    key={lead.id}
-                    lead={lead}
-                    index={i}
-                    isFocused={focusedIndex === i}
-                    isClaiming={claimingId === lead.id}
-                    onClaim={() => handleClaim(lead)}
-                    onOpenDrawer={() => setDrawerLead(lead)}
-                    onPipelineChange={(s) => handlePipelineChange(lead.id, s)}
-                    onNoteAdd={(text) => handleAddNote(lead.id, text)}
+              <>
+                <AnimatePresence mode="popLayout">
+                  {pagedLeads.map((lead, i) => (
+                    <LeadCard
+                      key={lead.id}
+                      lead={lead}
+                      index={i}
+                      isFocused={focusedIndex === i}
+                      isClaiming={claimingId === lead.id}
+                      onClaim={() => handleClaim(lead)}
+                      onOpenOutreach={() => onReachOut(lead)}
+                      onPipelineChange={(s) => handlePipelineChange(lead.id, s)}
+                      onNoteAdd={(text) => handleAddNote(lead.id, text)}
+                    />
+                  ))}
+                </AnimatePresence>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <Pagination
+                    page={currentPage}
+                    totalPages={totalPages}
+                    total={filteredLeads.length}
+                    onPrev={() => { setCurrentPage((p) => Math.max(0, p - 1)); setFocusedIndex(-1); }}
+                    onNext={() => { setCurrentPage((p) => Math.min(totalPages - 1, p + 1)); setFocusedIndex(-1); }}
                   />
-                ))}
-              </AnimatePresence>
+                )}
+              </>
             )}
           </motion.div>
         ) : (
-          <motion.div key="pipeline" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-          >
+          <motion.div key="pipeline" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
             <PipelineBoard
               leads={filteredLeads}
               onPipelineChange={handlePipelineChange}
-              onOpenDrawer={setDrawerLead}
+              onOpenOutreach={onReachOut}
             />
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Outreach Modal — full-screen centered, not bottom drawer */}
-      <OutreachModal lead={drawerLead} onClose={() => setDrawerLead(null)} />
     </div>
   );
 }

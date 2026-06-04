@@ -12,6 +12,7 @@ import SentinelMonitor from "@/components/tabs/SentinelMonitor";
 import Notifications from "@/components/tabs/Notifications";
 import SettingsTab from "@/components/tabs/Settings";
 import IntegrationsTab from "@/components/tabs/Integrations";
+import OutreachPage from "@/components/OutreachPage";
 import { useLeads } from "@/hooks/useLeads";
 import { useHotAlert } from "@/hooks/useHotAlert";
 import type { Lead } from "@/hooks/useLeads";
@@ -250,6 +251,7 @@ export default function Dashboard() {
   const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("feed");
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [outreachLead, setOutreachLead] = useState<Lead | null>(null);
 
   const { data } = useLeads();
   const leads = data?.leads ?? [];
@@ -371,35 +373,60 @@ export default function Dashboard() {
           {/* Desktop page heading */}
           <div className="hidden sm:flex items-center justify-between mb-5">
             <div>
-              <h1 className="text-lg font-bold dark:text-zinc-100 text-zinc-900 tracking-tight">{TAB_TITLES[activeTab]}</h1>
-              <p className="text-xs dark:text-zinc-500 text-zinc-500 mt-0.5">{TAB_SUBTITLES[activeTab]}</p>
+              <h1 className="text-lg font-bold dark:text-zinc-100 text-zinc-900 tracking-tight">
+                {outreachLead && activeTab === "feed" ? "Reach Out to Client" : TAB_TITLES[activeTab]}
+              </h1>
+              <p className="text-xs dark:text-zinc-500 text-zinc-500 mt-0.5">
+                {outreachLead && activeTab === "feed"
+                  ? "Copy a ready-made message and send it directly to the lead"
+                  : TAB_SUBTITLES[activeTab]
+                }
+              </p>
             </div>
           </div>
 
           {/* Tab content with smooth Framer Motion transitions */}
           <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={activeTab}
-              variants={tabVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.18, ease: "easeOut" }}
-              style={{ willChange: "opacity, transform" }}
-            >
-              {activeTab === "feed"          && <HomeFeed />}
-              {activeTab === "sentinel"      && <SentinelMonitor />}
-              {activeTab === "notifications" && <Notifications />}
-              {activeTab === "integrations"  && <IntegrationsTab />}
-              {activeTab === "settings"      && (
-                <SettingsTab
-                  theme={theme}
-                  onToggleTheme={toggleTheme}
-                  soundEnabled={soundEnabled}
-                  onToggleSound={toggleSound}
+            {/* Outreach sub-page — renders instead of feed when a lead is selected */}
+            {outreachLead && activeTab === "feed" ? (
+              <motion.div
+                key="outreach"
+                variants={tabVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.18, ease: "easeOut" }}
+                style={{ willChange: "opacity, transform" }}
+              >
+                <OutreachPage
+                  lead={outreachLead}
+                  onBack={() => setOutreachLead(null)}
                 />
-              )}
-            </motion.div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key={activeTab}
+                variants={tabVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.18, ease: "easeOut" }}
+                style={{ willChange: "opacity, transform" }}
+              >
+                {activeTab === "feed"          && <HomeFeed onReachOut={(lead) => setOutreachLead(lead)} />}
+                {activeTab === "sentinel"      && <SentinelMonitor />}
+                {activeTab === "notifications" && <Notifications />}
+                {activeTab === "integrations"  && <IntegrationsTab />}
+                {activeTab === "settings"      && (
+                  <SettingsTab
+                    theme={theme}
+                    onToggleTheme={toggleTheme}
+                    soundEnabled={soundEnabled}
+                    onToggleSound={toggleSound}
+                  />
+                )}
+              </motion.div>
+            )}
           </AnimatePresence>
         </main>
 

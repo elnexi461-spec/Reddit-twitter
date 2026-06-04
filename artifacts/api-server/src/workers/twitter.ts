@@ -3,8 +3,10 @@ import { pushLead, setWorkerStatus } from "../store/leads.js";
 import { getTwitterKeywords } from "../store/keywords.js";
 import { qualifyPost } from "../lib/qualify.js";
 
-const HN_SEARCH = "https://hn.algolia.com/api/v1/search_by_date";
-const POLL_INTERVAL_MS = 5 * 60 * 1000;
+const HN_SEARCH_BY_DATE = "https://hn.algolia.com/api/v1/search_by_date";
+const HN_SEARCH = "https://hn.algolia.com/api/v1/search";
+const POLL_INTERVAL_MS = 2 * 60 * 1000; // poll every 2 minutes
+const HITS_PER_PAGE = 50;
 
 interface HNHit {
   objectID: string;
@@ -14,6 +16,7 @@ interface HNHit {
   story_title?: string;
   story_url?: string;
   created_at: string;
+  created_at_i: number;
   _tags: string[];
 }
 
@@ -39,26 +42,41 @@ function hitUrl(hit: HNHit): string {
   return `https://news.ycombinator.com/item?id=${hit.objectID}`;
 }
 
-/**
- * For HN comments, qualification must pass on the comment text itself —
- * the parent story title alone is not enough because the comment could be
- * an off-topic reply in a tangentially related thread.
- */
 function shouldAccept(hit: HNHit, term: string): boolean {
   if (isComment(hit)) {
     const commentText = (hit.comment_text ?? "")
       .replace(/(<[^>]+>)/g, " ")
       .replace(/&[a-z#0-9]+;/gi, " ");
-    // For comments, qualify on comment body + story title together
     return qualifyPost(hit.story_title ?? term, commentText);
   }
-  // For stories, qualify on title + (url as context)
   return qualifyPost(hitTitle(hit), hit.url ?? "");
 }
 
-async function searchTerm(term: string): Promise<HNHit[]> {
+/**
+ * Search HN with optional time window.
+ * - First pass: last 48 hours (search_by_date endpoint with numericFilters)
+ * - Second pass: fall back to relevance-based search (wider timeframe)
+ */
+async function searchTermRecent(term: string): Promise<HNHit[]> {
+  const cutoff = Math.floor((Date.now() - 48 * 3600 * 1000) / 1000);
+  try {
+    const { data } = await axios.get<HNResponse>(HN_SEARCH_BY_DATE, {
+      params: {
+        query: term,
+        hitsPerPage: HITS_PER_PAGE,
+        numericFilters: `created_at_i>${cutoff}`,
+      },
+      timeout: 12_000,
+    });
+    return data.hits ?? [];
+  } catch {
+    return [];
+  }
+}
+
+async function searchTermAllTime(term: string): Promise<HNHit[]> {
   const { data } = await axios.get<HNResponse>(HN_SEARCH, {
-    params: { query: term, hitsPerPage: 25 },
+    params: { query: term, hitsPerPage: HITS_PER_PAGE },
     timeout: 12_000,
   });
   return data.hits ?? [];
@@ -72,7 +90,7 @@ async function poll() {
     return;
   }
 
-  console.log(`[hn] polling ${terms.length} terms via HN Algolia…`);
+  console.log(`[hn] polling ${terms.length} terms via HN Algolia (recent + fallback)…`);
   let anySuccess = false;
   let accepted = 0;
   let rejected = 0;
@@ -81,7 +99,19 @@ async function poll() {
     let hits: HNHit[];
 
     try {
-      hits = await searchTerm(term);
+      // Pass 1: recent 48h
+      hits = await searchTermRecent(term);
+
+      // Pass 2: if fewer than 5 recent hits, also pull relevance-ranked
+      if (hits.length < 5) {
+        const allTime = await searchTermAllTime(term);
+        // Merge, deduplicating by objectID
+        const ids = new Set(hits.map((h) => h.objectID));
+        for (const h of allTime) {
+          if (!ids.has(h.objectID)) hits.push(h);
+        }
+      }
+
       anySuccess = true;
     } catch (err) {
       const msg = axios.isAxiosError(err)
@@ -95,7 +125,6 @@ async function poll() {
       if (processed.has(hit.objectID)) continue;
       processed.add(hit.objectID);
 
-      // Hard qualification gate
       if (!shouldAccept(hit, term)) {
         rejected++;
         continue;
@@ -103,7 +132,6 @@ async function poll() {
 
       accepted++;
       const title = hitTitle(hit);
-
       pushLead({
         id: hit.objectID,
         source: "HN",

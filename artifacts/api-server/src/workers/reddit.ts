@@ -4,9 +4,20 @@ import { getRedditKeywords } from "../store/keywords.js";
 import { qualifyPost } from "../lib/qualify.js";
 
 const config = {
-  subreddits: ["webscraping", "dataengineering", "sneakerbots"],
-  intervalMs: 5 * 60 * 1000,
-  limitPerQuery: 25,
+  subreddits: [
+    "webscraping",
+    "dataengineering",
+    "sneakerbots",
+    "learnpython",
+    "Python",
+    "automation",
+    "selenium",
+    "webdev",
+    "datascience",
+    "devops",
+  ],
+  intervalMs: 3 * 60 * 1000, // poll every 3 minutes
+  limitPerQuery: 50,          // fetch more per query for better recency coverage
 };
 
 const BASE = "https://arctic-shift.photon-reddit.com/api/posts/search";
@@ -28,15 +39,23 @@ const seen = new Set<string>();
 
 async function fetchForKeyword(
   keyword: string,
-  subreddit: string
+  subreddit: string,
+  afterUtc?: number
 ): Promise<ArcticPost[]> {
+  const params: Record<string, string | number> = {
+    query: keyword,
+    subreddit,
+    limit: config.limitPerQuery,
+    sort: "desc",
+  };
+
+  // Prefer recent posts first using after/before window
+  if (afterUtc) {
+    params["after"] = afterUtc;
+  }
+
   const { data } = await axios.get<ArcticResponse>(BASE, {
-    params: {
-      query: keyword,
-      subreddit,
-      limit: config.limitPerQuery,
-      sort: "desc",
-    },
+    params,
     timeout: 12_000,
   });
   return data.data ?? [];
@@ -50,6 +69,9 @@ async function poll() {
     return;
   }
 
+  // Try last 7 days first, then all time for high-volume subreddits
+  const sevenDaysAgo = Math.floor((Date.now() - 7 * 24 * 3600 * 1000) / 1000);
+
   let anySuccess = false;
   let accepted = 0;
   let rejected = 0;
@@ -59,7 +81,14 @@ async function poll() {
       let posts: ArcticPost[];
 
       try {
-        posts = await fetchForKeyword(kw, sub);
+        // First pass: recent posts only (last 7 days)
+        posts = await fetchForKeyword(kw, sub, sevenDaysAgo);
+
+        // If no recent results, fall back to all-time search
+        if (posts.length === 0) {
+          posts = await fetchForKeyword(kw, sub);
+        }
+
         anySuccess = true;
       } catch (err) {
         const msg = axios.isAxiosError(err)
@@ -73,7 +102,6 @@ async function poll() {
         if (seen.has(post.id)) continue;
         seen.add(post.id);
 
-        // Hard qualification gate — reject posts without clear proxy intent
         if (!qualifyPost(post.title, post.selftext ?? "")) {
           rejected++;
           continue;
@@ -90,18 +118,16 @@ async function poll() {
         });
 
         console.log(
-          `[reddit] ✓ qualified — r/${post.subreddit} — "${kw}" — ${post.title}`
+          `[reddit] ✓ qualified — r/${post.subreddit} — "${kw}" — ${post.title.slice(0, 80)}`
         );
       }
 
-      await new Promise((r) => setTimeout(r, 300));
+      await new Promise((r) => setTimeout(r, 250));
     }
   }
 
   if (accepted + rejected > 0) {
-    console.log(
-      `[reddit] poll done — ${accepted} accepted, ${rejected} rejected`
-    );
+    console.log(`[reddit] poll done — ${accepted} accepted, ${rejected} rejected`);
   }
 
   setWorkerStatus("reddit", anySuccess ? "active" : "degraded");
@@ -110,7 +136,7 @@ async function poll() {
 export function start(): NodeJS.Timeout {
   const kws = getRedditKeywords();
   console.log(
-    `[reddit] arctic-shift — r/${config.subreddits.join(", r/")} — ${kws.length} keywords — every ${config.intervalMs / 1000}s`
+    `[reddit] arctic-shift — ${config.subreddits.length} subreddits — ${kws.length} keywords — every ${config.intervalMs / 1000}s`
   );
   poll();
   return setInterval(poll, config.intervalMs);
