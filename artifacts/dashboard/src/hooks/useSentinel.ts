@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 
-export interface SentinelState {
+export interface MonitorState {
   ipReputation: {
     checked: number;
     quarantined: number;
@@ -11,18 +11,21 @@ export interface SentinelState {
     route: string[];
     trend: number[];
   };
-  killSwitch: {
+  circuitBreaker: {
     armed: boolean;
     lastEvent: string;
     events: { time: string; msg: string }[];
   };
-  selfHealing: {
+  nodePool: {
     activeNodes: number;
     totalNodes: number;
     lastWebhook: string;
     log: { time: string; msg: string }[];
   };
 }
+
+// Keep backward-compatible export alias
+export type SentinelState = MonitorState;
 
 const ROUTES = [
   ["US-East", "Frankfurt", "Amsterdam"],
@@ -31,15 +34,15 @@ const ROUTES = [
   ["Chicago", "Paris", "Warsaw"],
 ];
 
-const KILL_EVENTS = [
+const CIRCUIT_EVENTS = [
   "Throttled abusive key — 12 Mbps exceeded",
   "Auto-terminated: 6 consecutive 403s",
   "Bandwidth cap triggered on shared pool",
   "IP cycling: datacenter range flagged",
-  "Emergency kill: DataDome challenge loop",
+  "Emergency stop: DataDome challenge loop",
 ];
 
-const HEAL_MSGS = [
+const RECOVERY_MSGS = [
   "Spun up 2 fresh residential IPs (US-East)",
   "Webhook fired: replaced 1 quarantined node",
   "Pool replenished: +5 clean IPs added",
@@ -59,7 +62,7 @@ function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-const initialState: SentinelState = {
+const initialState: MonitorState = {
   ipReputation: {
     checked: 4_812,
     quarantined: 37,
@@ -70,7 +73,7 @@ const initialState: SentinelState = {
     route: ["US-East", "Frankfurt", "Amsterdam"],
     trend: [48, 45, 52, 41, 44, 42, 39, 43, 42, 42],
   },
-  killSwitch: {
+  circuitBreaker: {
     armed: true,
     lastEvent: "2m ago",
     events: [
@@ -79,7 +82,7 @@ const initialState: SentinelState = {
       { time: "17:44:32", msg: "IP cycling: datacenter range flagged" },
     ],
   },
-  selfHealing: {
+  nodePool: {
     activeNodes: 124,
     totalNodes: 128,
     lastWebhook: "5m ago",
@@ -91,8 +94,8 @@ const initialState: SentinelState = {
   },
 };
 
-export function useSentinel(): SentinelState {
-  const [state, setState] = useState<SentinelState>(initialState);
+export function useSentinel(): MonitorState {
+  const [state, setState] = useState<MonitorState>(initialState);
   const tick = useRef(0);
 
   useEffect(() => {
@@ -106,7 +109,7 @@ export function useSentinel(): SentinelState {
         const newQuarantined = prev.ipReputation.quarantined + (Math.random() > 0.82 ? 1 : 0);
         const gotNewBad = newQuarantined > prev.ipReputation.quarantined;
 
-        const nextState: SentinelState = {
+        const nextState: MonitorState = {
           ipReputation: {
             checked: prev.ipReputation.checked + Math.floor(Math.random() * 8) + 1,
             quarantined: newQuarantined,
@@ -117,38 +120,38 @@ export function useSentinel(): SentinelState {
             route: tick.current % 15 === 0 ? pick(ROUTES) : prev.latency.route,
             trend: nextTrend,
           },
-          killSwitch: {
+          circuitBreaker: {
             armed: true,
-            lastEvent: prev.killSwitch.lastEvent,
-            events: prev.killSwitch.events,
+            lastEvent: prev.circuitBreaker.lastEvent,
+            events: prev.circuitBreaker.events,
           },
-          selfHealing: {
-            activeNodes: Math.max(100, Math.min(128, prev.selfHealing.activeNodes + (Math.random() > 0.85 ? 1 : Math.random() > 0.9 ? -1 : 0))),
+          nodePool: {
+            activeNodes: Math.max(100, Math.min(128, prev.nodePool.activeNodes + (Math.random() > 0.85 ? 1 : Math.random() > 0.9 ? -1 : 0))),
             totalNodes: 128,
-            lastWebhook: prev.selfHealing.lastWebhook,
-            log: prev.selfHealing.log,
+            lastWebhook: prev.nodePool.lastWebhook,
+            log: prev.nodePool.log,
           },
         };
 
-        // Occasionally fire a kill event
+        // Occasionally fire a circuit-breaker event
         if (tick.current % 8 === 0) {
-          const msg = pick(KILL_EVENTS);
+          const msg = pick(CIRCUIT_EVENTS);
           const time = nowHHMM();
-          nextState.killSwitch = {
-            ...nextState.killSwitch,
+          nextState.circuitBreaker = {
+            ...nextState.circuitBreaker,
             lastEvent: "just now",
-            events: [{ time, msg }, ...prev.killSwitch.events].slice(0, 5),
+            events: [{ time, msg }, ...prev.circuitBreaker.events].slice(0, 5),
           };
         }
 
-        // Occasionally fire a heal webhook
+        // Occasionally fire a node recovery event
         if (tick.current % 11 === 0) {
-          const msg = pick(HEAL_MSGS);
+          const msg = pick(RECOVERY_MSGS);
           const time = nowHHMM();
-          nextState.selfHealing = {
-            ...nextState.selfHealing,
+          nextState.nodePool = {
+            ...nextState.nodePool,
             lastWebhook: "just now",
-            log: [{ time, msg }, ...prev.selfHealing.log].slice(0, 5),
+            log: [{ time, msg }, ...prev.nodePool.log].slice(0, 5),
           };
         }
 

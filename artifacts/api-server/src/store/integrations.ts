@@ -10,6 +10,10 @@ export interface IntegrationConfig {
   webhookSecret: string;
   autoReplaceOnDrop: boolean;
   autoReplaceOnAbuse: boolean;
+  slackWebhookUrl: string;
+  discordWebhookUrl: string;
+  notifyOnHot: boolean;
+  notifyOnWarm: boolean;
   updatedAt: string;
 }
 
@@ -19,6 +23,10 @@ const DEFAULTS: IntegrationConfig = {
   webhookSecret: "",
   autoReplaceOnDrop: true,
   autoReplaceOnAbuse: true,
+  slackWebhookUrl: "",
+  discordWebhookUrl: "",
+  notifyOnHot: true,
+  notifyOnWarm: false,
   updatedAt: new Date().toISOString(),
 };
 
@@ -59,7 +67,7 @@ export function updateIntegrationConfig(patch: Partial<IntegrationConfig>): Inte
   return { ...config };
 }
 
-// ─── Webhook Firing ──────────────────────────────────────────────────────────
+// ─── Node Webhook Firing ─────────────────────────────────────────────────────
 
 export interface WebhookPayload {
   event: "ip_drop" | "ip_abuse" | "node_offline" | "test";
@@ -68,13 +76,9 @@ export interface WebhookPayload {
   reason?: string;
   action: "replace_ip" | "quarantine" | "test";
   timestamp: string;
-  source: "proxies_sx_sentinel";
+  source: "proxies_sx_alpha_monitor";
 }
 
-/**
- * Fire a JSON webhook to the configured Proxies.sx node management endpoint.
- * Called automatically when the Sentinel detects an IP drop or abuse event.
- */
 export async function fireWebhook(payload: WebhookPayload): Promise<{ ok: boolean; status?: number; error?: string }> {
   const cfg = getIntegrationConfig();
 
@@ -84,65 +88,123 @@ export async function fireWebhook(payload: WebhookPayload): Promise<{ ok: boolea
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    "X-Source": "proxies-sx-sentinel",
+    "X-Source": "proxies-sx-alpha-monitor",
   };
 
-  if (cfg.apiKey) {
-    headers["Authorization"] = `Bearer ${cfg.apiKey}`;
-  }
-
-  if (cfg.webhookSecret) {
-    headers["X-Webhook-Secret"] = cfg.webhookSecret;
-  }
+  if (cfg.apiKey) headers["Authorization"] = `Bearer ${cfg.apiKey}`;
+  if (cfg.webhookSecret) headers["X-Webhook-Secret"] = cfg.webhookSecret;
 
   try {
-    const res = await axios.post(cfg.nodeManagementEndpoint, payload, {
-      headers,
-      timeout: 8_000,
-    });
-    console.log(`[integrations] webhook fired — event=${payload.event} status=${res.status}`);
+    const res = await axios.post(cfg.nodeManagementEndpoint, payload, { headers, timeout: 8_000 });
+    console.log(`[integrations] node webhook fired — event=${payload.event} status=${res.status}`);
     return { ok: true, status: res.status };
   } catch (err) {
     const msg = axios.isAxiosError(err)
       ? `HTTP ${err.response?.status ?? "network"} — ${err.message}`
       : (err as Error).message;
-    console.error(`[integrations] webhook failed — ${msg}`);
+    console.error(`[integrations] node webhook failed — ${msg}`);
     return { ok: false, error: msg };
   }
 }
 
-/**
- * Called by the Sentinel when an IP drop is detected.
- * Fires webhook only if autoReplaceOnDrop is enabled.
- */
 export async function handleIpDrop(ip: string, reason: string): Promise<void> {
   const cfg = getIntegrationConfig();
   if (!cfg.autoReplaceOnDrop || !cfg.nodeManagementEndpoint) return;
-
-  await fireWebhook({
-    event: "ip_drop",
-    ip,
-    reason,
-    action: "replace_ip",
-    timestamp: new Date().toISOString(),
-    source: "proxies_sx_sentinel",
-  });
+  await fireWebhook({ event: "ip_drop", ip, reason, action: "replace_ip", timestamp: new Date().toISOString(), source: "proxies_sx_alpha_monitor" });
 }
 
-/**
- * Called by the Sentinel when IP abuse is detected.
- * Fires webhook only if autoReplaceOnAbuse is enabled.
- */
 export async function handleIpAbuse(ip: string, reason: string): Promise<void> {
   const cfg = getIntegrationConfig();
   if (!cfg.autoReplaceOnAbuse || !cfg.nodeManagementEndpoint) return;
+  await fireWebhook({ event: "ip_abuse", ip, reason, action: "quarantine", timestamp: new Date().toISOString(), source: "proxies_sx_alpha_monitor" });
+}
 
-  await fireWebhook({
-    event: "ip_abuse",
-    ip,
-    reason,
-    action: "quarantine",
-    timestamp: new Date().toISOString(),
-    source: "proxies_sx_sentinel",
-  });
+// ─── Slack Notifications ─────────────────────────────────────────────────────
+
+export interface LeadAlert {
+  id: string;
+  title: string;
+  url: string;
+  source: string;
+  keyword: string;
+  score: number;
+  tier: "hot" | "warm" | "cool";
+}
+
+export async function notifySlack(lead: LeadAlert): Promise<void> {
+  const cfg = getIntegrationConfig();
+  if (!cfg.slackWebhookUrl) return;
+  if (lead.tier === "hot" && !cfg.notifyOnHot) return;
+  if (lead.tier === "warm" && !cfg.notifyOnWarm) return;
+
+  const tierEmoji = lead.tier === "hot" ? "🔥" : "🌡️";
+  const sourceLabel = lead.source === "reddit" ? "Reddit" : "Hacker News";
+
+  const payload = {
+    text: `${tierEmoji} *New ${lead.tier.toUpperCase()} lead detected — Proxies.sx Intel*`,
+    attachments: [
+      {
+        color: lead.tier === "hot" ? "#ef4444" : "#f59e0b",
+        title: lead.title.length > 100 ? lead.title.slice(0, 97) + "…" : lead.title,
+        title_link: lead.url,
+        fields: [
+          { title: "Source",  value: sourceLabel,   short: true },
+          { title: "Score",   value: `${lead.score}pts`, short: true },
+          { title: "Keyword", value: `\`${lead.keyword}\``, short: true },
+          { title: "Tier",    value: lead.tier.toUpperCase(), short: true },
+        ],
+        footer: "Proxies.sx Alpha Monitor",
+        ts: Math.floor(Date.now() / 1000),
+      },
+    ],
+  };
+
+  try {
+    await axios.post(cfg.slackWebhookUrl, payload, { timeout: 6_000 });
+    console.log(`[integrations] slack notif sent — ${lead.tier} lead "${lead.title.slice(0, 40)}"`);
+  } catch (err) {
+    const msg = axios.isAxiosError(err) ? err.message : (err as Error).message;
+    console.error(`[integrations] slack notif failed — ${msg}`);
+  }
+}
+
+// ─── Discord Notifications ────────────────────────────────────────────────────
+
+export async function notifyDiscord(lead: LeadAlert): Promise<void> {
+  const cfg = getIntegrationConfig();
+  if (!cfg.discordWebhookUrl) return;
+  if (lead.tier === "hot" && !cfg.notifyOnHot) return;
+  if (lead.tier === "warm" && !cfg.notifyOnWarm) return;
+
+  const tierEmoji = lead.tier === "hot" ? "🔥" : "🌡️";
+  const color = lead.tier === "hot" ? 0xef4444 : 0xf59e0b;
+  const sourceLabel = lead.source === "reddit" ? "Reddit" : "Hacker News";
+
+  const payload = {
+    username: "Proxies.sx Intel",
+    avatar_url: "https://proxies.sx/favicon.ico",
+    embeds: [
+      {
+        title: `${tierEmoji} New ${lead.tier.toUpperCase()} Lead`,
+        description: lead.title.length > 200 ? lead.title.slice(0, 197) + "…" : lead.title,
+        url: lead.url,
+        color,
+        fields: [
+          { name: "Source",  value: sourceLabel,         inline: true },
+          { name: "Score",   value: `${lead.score}pts`,  inline: true },
+          { name: "Keyword", value: `\`${lead.keyword}\``, inline: true },
+        ],
+        footer: { text: "Proxies.sx Alpha Monitor • intel.proxies.sx" },
+        timestamp: new Date().toISOString(),
+      },
+    ],
+  };
+
+  try {
+    await axios.post(cfg.discordWebhookUrl, payload, { timeout: 6_000 });
+    console.log(`[integrations] discord notif sent — ${lead.tier} lead "${lead.title.slice(0, 40)}"`);
+  } catch (err) {
+    const msg = axios.isAxiosError(err) ? err.message : (err as Error).message;
+    console.error(`[integrations] discord notif failed — ${msg}`);
+  }
 }

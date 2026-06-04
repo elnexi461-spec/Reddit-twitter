@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { scoreLead } from "../lib/score.js";
+import { notifySlack, notifyDiscord } from "./integrations.js";
 
 const MAX_LEADS = 200;
 const CONTENT_WINDOW = 50;
@@ -61,17 +62,9 @@ const workerStatus: WorkerState = { reddit: "active", twitter: "active" };
 let startedAt = Date.now();
 const contentWindow: string[] = [];
 
-// ---------------------------------------------------------------------------
-// Temporal guard
-// ---------------------------------------------------------------------------
-
 function isCurrentYear(timestamp: string): boolean {
   try { return new Date(timestamp).getFullYear() === CURRENT_YEAR; } catch { return false; }
 }
-
-// ---------------------------------------------------------------------------
-// Deduplication
-// ---------------------------------------------------------------------------
 
 function normalize(text: string): string {
   return text.toLowerCase().replace(/[^\w\s]/g, "").replace(/\s+/g, " ").trim();
@@ -86,10 +79,6 @@ function trackContent(text: string): void {
   if (contentWindow.length > CONTENT_WINDOW) contentWindow.shift();
 }
 
-// ---------------------------------------------------------------------------
-// Persistence
-// ---------------------------------------------------------------------------
-
 function saveToDisk(): void {
   try {
     fs.mkdirSync(path.dirname(BACKUP_PATH), { recursive: true });
@@ -102,7 +91,6 @@ function saveToDisk(): void {
 
 function migrateLead(lead: Partial<Lead>): Lead {
   let result = lead as Lead;
-
   if (result.score === undefined || result.tier === undefined) {
     const { score, tier } = scoreLead(result.keyword ?? "", result.source ?? "", result.title ?? "");
     result = { ...result, score, tier };
@@ -110,7 +98,6 @@ function migrateLead(lead: Partial<Lead>): Lead {
   if (result.claimed === undefined) result = { ...result, claimed: false };
   if (result.pipelineStatus === undefined) result = { ...result, pipelineStatus: "unclaimed" };
   if (!Array.isArray(result.notes)) result = { ...result, notes: [] };
-
   return result;
 }
 
@@ -142,10 +129,6 @@ export function loadFromDisk(): void {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Public API — mutations
-// ---------------------------------------------------------------------------
-
 export function pushLead(lead: Omit<Lead, "score" | "tier" | "claimed" | "claimedAt" | "pipelineStatus" | "notes">): void {
   if (!isCurrentYear(lead.timestamp)) return;
   if (seenIds.has(lead.id)) return;
@@ -161,6 +144,13 @@ export function pushLead(lead: Omit<Lead, "score" | "tier" | "claimed" | "claime
   leads.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   if (leads.length > MAX_LEADS) leads.length = MAX_LEADS;
   saveToDisk();
+
+  // Fire Slack/Discord alerts for hot/warm leads (non-blocking)
+  if (tier === "hot" || tier === "warm") {
+    const alert = { id: full.id, title: full.title, url: full.url, source: full.source, keyword: full.keyword, score, tier };
+    notifySlack(alert).catch(() => {});
+    notifyDiscord(alert).catch(() => {});
+  }
 }
 
 export function claimLead(id: string): Lead | null {
@@ -195,10 +185,6 @@ export function setWorkerStatus(worker: keyof WorkerState, status: WorkerStatus)
   workerStatus[worker] = status;
 }
 
-// ---------------------------------------------------------------------------
-// Public API — queries
-// ---------------------------------------------------------------------------
-
 export function getSnapshot() {
   return {
     uptime: Math.floor((Date.now() - startedAt) / 1000),
@@ -213,7 +199,6 @@ export function getStats(): StatsSnapshot {
   const todayStr = now.toISOString().split("T")[0];
   const total = leads.length || 1;
 
-  // Daily counts — last 7 days
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(now);
     d.setDate(d.getDate() - (6 - i));
@@ -230,26 +215,16 @@ export function getStats(): StatsSnapshot {
     };
   });
 
-  // Source breakdown
   const redditCount = leads.filter((l) => l.source === "reddit").length;
   const hnCount = leads.filter((l) => l.source === "HN").length;
-
-  // Tier breakdown
   const hotCount = leads.filter((l) => l.tier === "hot").length;
   const warmCount = leads.filter((l) => l.tier === "warm").length;
   const coolCount = leads.filter((l) => l.tier === "cool").length;
 
-  // Top keywords
   const kwMap = new Map<string, number>();
-  for (const lead of leads) {
-    kwMap.set(lead.keyword, (kwMap.get(lead.keyword) ?? 0) + 1);
-  }
-  const topKeywords = Array.from(kwMap.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 6)
-    .map(([term, count]) => ({ term, count }));
+  for (const lead of leads) kwMap.set(lead.keyword, (kwMap.get(lead.keyword) ?? 0) + 1);
+  const topKeywords = Array.from(kwMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([term, count]) => ({ term, count }));
 
-  // Claim rate + pipeline
   const claimedCount = leads.filter((l) => l.claimed).length;
   const pipelineBreakdown: Record<PipelineStatus, number> = {
     unclaimed: leads.filter((l) => l.pipelineStatus === "unclaimed").length,
@@ -258,16 +233,12 @@ export function getStats(): StatsSnapshot {
     converted: leads.filter((l) => l.pipelineStatus === "converted").length,
   };
 
-  // Today + avg score
   const totalToday = leads.filter((l) => l.timestamp.startsWith(todayStr)).length;
   const avgScore = Math.round((leads.reduce((s, l) => s + l.score, 0) / total) * 10) / 10;
 
   return {
     dailyCounts,
-    sourceBreakdown: {
-      reddit: Math.round((redditCount / total) * 100),
-      hn: Math.round((hnCount / total) * 100),
-    },
+    sourceBreakdown: { reddit: Math.round((redditCount / total) * 100), hn: Math.round((hnCount / total) * 100) },
     tierBreakdown: { hot: hotCount, warm: warmCount, cool: coolCount },
     topKeywords,
     claimRate: Math.round((claimedCount / total) * 100),

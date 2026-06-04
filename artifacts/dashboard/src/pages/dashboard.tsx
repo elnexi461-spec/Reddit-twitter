@@ -26,7 +26,7 @@ type Tab = "feed" | "sentinel" | "notifications" | "settings" | "integrations";
 
 const TABS: { id: Tab; label: string; mobileLabel: string; icon: React.ReactNode }[] = [
   { id: "feed",          label: "Live Feed",     mobileLabel: "Feed",    icon: <Activity     className="w-5 h-5" /> },
-  { id: "sentinel",      label: "Sentinel",      mobileLabel: "Sentinel",icon: <Shield       className="w-5 h-5" /> },
+  { id: "sentinel",      label: "Alpha Monitor",  mobileLabel: "Alpha",   icon: <Shield       className="w-5 h-5" /> },
   { id: "notifications", label: "Analytics",     mobileLabel: "Stats",   icon: <Bell         className="w-5 h-5" /> },
   { id: "integrations",  label: "Integrations",  mobileLabel: "Webhooks",icon: <Webhook      className="w-5 h-5" /> },
   { id: "settings",      label: "Settings",      mobileLabel: "Settings",icon: <SettingsIcon className="w-5 h-5" /> },
@@ -37,7 +37,7 @@ const MOBILE_TABS: Tab[] = ["feed", "sentinel", "notifications", "integrations"]
 
 const TAB_TITLES: Record<Tab, string> = {
   feed:          "Live Intelligence Feed",
-  sentinel:      "Sentinel Monitor",
+  sentinel:      "Alpha Monitor",
   notifications: "Analytics & Activity",
   settings:      "Engine Settings",
   integrations:  "Integrations & Webhooks",
@@ -45,7 +45,7 @@ const TAB_TITLES: Record<Tab, string> = {
 
 const TAB_SUBTITLES: Record<Tab, string> = {
   feed:          "Real-time proxy buyer signals · 2026 only · sorted by recency",
-  sentinel:      "Live proxy infrastructure telemetry · updates every 2s",
+  sentinel:      "Live proxy infrastructure telemetry · circuit-breaker armed · updates every 2s",
   notifications: "Lead analytics, pipeline funnel, and activity log",
   settings:      "Keyword management, API status, engine configuration",
   integrations:  "Node management endpoints · auto IP replacement · webhook config",

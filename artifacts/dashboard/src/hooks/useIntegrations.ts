@@ -6,8 +6,14 @@ export interface IntegrationConfig {
   webhookSecret: string;
   autoReplaceOnDrop: boolean;
   autoReplaceOnAbuse: boolean;
+  slackWebhookUrl: string;
+  discordWebhookUrl: string;
+  notifyOnHot: boolean;
+  notifyOnWarm: boolean;
   hasApiKey: boolean;
   hasWebhookSecret: boolean;
+  hasSlack: boolean;
+  hasDiscord: boolean;
   updatedAt: string;
 }
 

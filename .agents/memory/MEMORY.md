@@ -1,3 +1,5 @@
 - [Integrations store pattern](integrations-store.md) — new webhook/integrations config stored at data/integrations_config.json, loaded in index.ts; API at /api/integrations/*
 - [Outreach is a modal not a drawer](outreach-modal.md) — OutreachDrawer.tsx replaced by OutreachModal.tsx (centered full-screen); HomeFeed imports OutreachModal
 - [Symptom keywords](symptom-keywords.md) — qualify.ts and keywords.ts extended with 14+ symptom signal keywords (cloudflare turnstile, datadome, playwright timeout, etc.)
+- [Terminology conventions](terminology.md) — all user-facing "Sentinel/Kill Switch/Self-Heal" phrases replaced with developer terms; internal type names kept as-is
+- [Slack/Discord notification pattern](slack-discord-notifs.md) — notifySlack/notifyDiscord in integrations.ts fire on hot/warm lead push; as const needed for union types in Notifications.tsx

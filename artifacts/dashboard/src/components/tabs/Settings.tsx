@@ -300,7 +300,7 @@ export default function Settings({ theme, onToggleTheme, soundEnabled, onToggleS
             { icon: <Database className="w-3.5 h-3.5 dark:text-zinc-500 text-zinc-400" />, label: "Intel API Server", ok: apiOk },
             { icon: <Wifi className="w-3.5 h-3.5 text-orange-400" />, label: "Reddit · Arctic-Shift Worker", ok: redditOk },
             { icon: <Wifi className="w-3.5 h-3.5 text-amber-400" />, label: "HN · Algolia Worker", ok: hnOk },
-            { icon: <Shield className="w-3.5 h-3.5 text-blue-400" />, label: "Sentinel Monitor", ok: true },
+            { icon: <Shield className="w-3.5 h-3.5 text-blue-400" />, label: "Alpha Monitor", ok: true },
           ].map(({ icon, label, ok }) => (
             <div key={label} className="flex items-center justify-between py-0.5">
               <div className="flex items-center gap-2">{icon}<span className="text-sm dark:text-zinc-300 text-zinc-700">{label}</span></div>

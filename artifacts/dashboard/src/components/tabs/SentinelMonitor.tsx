@@ -2,7 +2,6 @@ import { motion } from "framer-motion";
 import { Shield, Zap, Wifi, Activity, Power } from "lucide-react";
 import { useSentinel } from "@/hooks/useSentinel";
 
-// SVG progress ring
 function Ring({ pct, color, size = 80 }: { pct: number; color: string; size?: number }) {
   const r = size * 0.38;
   const circ = 2 * Math.PI * r;
@@ -21,7 +20,6 @@ function Ring({ pct, color, size = 80 }: { pct: number; color: string; size?: nu
   );
 }
 
-// Mini sparkline SVG
 function Sparkline({ data, color }: { data: number[]; color: string }) {
   if (data.length < 2) return null;
   const min = Math.min(...data);
@@ -41,7 +39,6 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
   );
 }
 
-// Animated counter
 function Counter({ value, className }: { value: number; className?: string }) {
   return (
     <motion.span
@@ -88,7 +85,7 @@ export default function SentinelMonitor() {
   const latencyColor = s.latency.ms < 50 ? "#22d668" : s.latency.ms < 120 ? "#f59e0b" : "#ef4444";
   const latencyLabel = s.latency.ms < 50 ? "Excellent" : s.latency.ms < 120 ? "Good" : "Degraded";
 
-  const nodesPct = (s.selfHealing.activeNodes / s.selfHealing.totalNodes) * 100;
+  const nodesPct = (s.nodePool.activeNodes / s.nodePool.totalNodes) * 100;
 
   return (
     <div className="space-y-4">
@@ -99,17 +96,17 @@ export default function SentinelMonitor() {
           <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
         </span>
         <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-          Sentinel Engine · All systems nominal · Live telemetry every 2s
+          Alpha Monitor · All systems nominal · Live telemetry every 2s
         </span>
       </div>
 
       {/* 2×2 card grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-        {/* Card 1: IP Reputation */}
+        {/* Card 1: IP Reputation Tracker */}
         <CardShell
           icon={<Shield className="w-3.5 h-3.5 text-blue-400" />}
-          label="IP Reputation Sentinel"
+          label="IP Reputation Tracker"
           accent="bg-blue-500/10"
         >
           <div className="flex items-center gap-4">
@@ -161,12 +158,10 @@ export default function SentinelMonitor() {
             </div>
           </div>
 
-          {/* Sparkline */}
           <div className="h-7 w-full">
             <Sparkline data={s.latency.trend} color={latencyColor} />
           </div>
 
-          {/* Route */}
           <div className="flex items-center gap-1 flex-wrap">
             {s.latency.route.map((node, i) => (
               <span key={`${node}-${i}`} className="flex items-center gap-1">
@@ -181,10 +176,10 @@ export default function SentinelMonitor() {
           </div>
         </CardShell>
 
-        {/* Card 3: Abuse Kill Switch */}
+        {/* Card 3: Circuit Breaker */}
         <CardShell
           icon={<Power className="w-3.5 h-3.5 text-red-400" />}
-          label="Abuse Auto-Kill Switch"
+          label="Circuit Breaker"
           accent="bg-red-500/10"
         >
           <div className="flex items-center gap-2.5">
@@ -193,11 +188,11 @@ export default function SentinelMonitor() {
               <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
             </span>
             <span className="text-lg font-bold text-emerald-500">ARMED</span>
-            <span className="text-[10px] dark:text-zinc-500 text-zinc-400 ml-auto">last event: {s.killSwitch.lastEvent}</span>
+            <span className="text-[10px] dark:text-zinc-500 text-zinc-400 ml-auto">last event: {s.circuitBreaker.lastEvent}</span>
           </div>
 
           <div className="space-y-1.5">
-            {s.killSwitch.events.slice(0, 3).map((ev, i) => (
+            {s.circuitBreaker.events.slice(0, 3).map((ev, i) => (
               <motion.div
                 key={`${ev.time}-${i}`}
                 layout
@@ -212,18 +207,18 @@ export default function SentinelMonitor() {
           </div>
         </CardShell>
 
-        {/* Card 4: Self-Healing Pool */}
+        {/* Card 4: Node Recovery Pool */}
         <CardShell
           icon={<Activity className="w-3.5 h-3.5 text-violet-400" />}
-          label="Self-Healing Pool"
+          label="Node Recovery Pool"
           accent="bg-violet-500/10"
         >
           <div className="flex items-center gap-3">
             <div>
               <div className="text-[10px] dark:text-zinc-500 text-zinc-400 uppercase tracking-wider mb-0.5">Active Nodes</div>
               <div className="flex items-baseline gap-1">
-                <Counter value={s.selfHealing.activeNodes} className="text-2xl font-black dark:text-zinc-100 text-zinc-900 tabular-nums" />
-                <span className="text-sm dark:text-zinc-500 text-zinc-400">/ {s.selfHealing.totalNodes}</span>
+                <Counter value={s.nodePool.activeNodes} className="text-2xl font-black dark:text-zinc-100 text-zinc-900 tabular-nums" />
+                <span className="text-sm dark:text-zinc-500 text-zinc-400">/ {s.nodePool.totalNodes}</span>
               </div>
             </div>
             <div className="ml-auto">
@@ -233,11 +228,11 @@ export default function SentinelMonitor() {
 
           <div className="flex items-center gap-1.5 text-[10px] dark:text-zinc-500 text-zinc-400">
             <Zap className="w-3 h-3 text-violet-400" />
-            Last webhook: <span className="text-violet-400 font-medium">{s.selfHealing.lastWebhook}</span>
+            Last webhook: <span className="text-violet-400 font-medium">{s.nodePool.lastWebhook}</span>
           </div>
 
           <div className="space-y-1.5">
-            {s.selfHealing.log.slice(0, 3).map((ev, i) => (
+            {s.nodePool.log.slice(0, 3).map((ev, i) => (
               <motion.div
                 key={`${ev.time}-${i}`}
                 layout

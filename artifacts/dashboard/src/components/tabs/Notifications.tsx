@@ -12,16 +12,16 @@ interface NotifEvent {
 }
 
 const SENTINEL_EVENTS: Omit<NotifEvent, "id" | "time">[] = [
-  { type: "sentinel", msg: "[Sentinel] Blocked bad IP — 185.220.101.47 quarantined" },
-  { type: "kill",     msg: "[Kill Switch] Auto-terminated abusive key — 15 Mbps threshold" },
-  { type: "heal",     msg: "[Self-Heal] Webhook fired — 2 fresh residential IPs spun up" },
-  { type: "sentinel", msg: "[Sentinel] Route switched: US-East → Frankfurt (lower latency)" },
-  { type: "warn",     msg: "[Warn] DataDome challenge loop detected on 3 consecutive requests" },
-  { type: "heal",     msg: "[Self-Heal] Pool replenished — +5 clean residential IPs added" },
-  { type: "kill",     msg: "[Kill Switch] Datacenter IP range flagged — auto-rotated" },
-  { type: "sentinel", msg: "[Sentinel] 7 IPs quarantined this hour — reputation score: 99.4%" },
-  { type: "warn",     msg: "[Warn] Cloudflare Turnstile challenge surge on target domain" },
-  { type: "heal",     msg: "[Self-Heal] 1 degraded node replaced via auto-webhook" },
+  { type: "sentinel", msg: "[alpha] Blocked bad IP — 185.220.101.47 quarantined" },
+  { type: "kill",     msg: "[circuit-breaker] Auto-terminated abusive key — 15 Mbps threshold" },
+  { type: "heal",     msg: "[auto-recovery] Webhook fired — 2 fresh residential IPs spun up" },
+  { type: "sentinel", msg: "[alpha] Route switched: US-East → Frankfurt (lower latency)" },
+  { type: "warn",     msg: "[warn] DataDome challenge loop detected on 3 consecutive requests" },
+  { type: "heal",     msg: "[auto-recovery] Pool replenished — +5 clean residential IPs added" },
+  { type: "kill",     msg: "[circuit-breaker] Datacenter IP range flagged — auto-rotated" },
+  { type: "sentinel", msg: "[alpha] 7 IPs quarantined this hour — reputation score: 99.4%" },
+  { type: "warn",     msg: "[warn] Cloudflare Turnstile challenge surge on target domain" },
+  { type: "heal",     msg: "[auto-recovery] 1 degraded node replaced via webhook" },
 ];
 
 function nowHHMM() {
@@ -124,7 +124,7 @@ export default function Notifications() {
 
   const [events, setEvents] = useState<NotifEvent[]>(() => {
     const now = nowHHMM();
-    return SENTINEL_EVENTS.slice(0, 6).map((e) => ({ ...e, id: uid(), time: now }));
+    return SENTINEL_EVENTS.slice(0, 6).map((e) => ({ ...e, id: uid(), time: now } as NotifEvent));
   });
 
   useEffect(() => {
@@ -133,7 +133,7 @@ export default function Notifications() {
     if (prevLeadCount.current !== 0 && count > prevLeadCount.current) {
       const diff = count - prevLeadCount.current;
       setEvents((prev) => [{
-        id: uid(), time: nowHHMM(), type: "lead",
+        id: uid(), time: nowHHMM(), type: "lead" as const,
         msg: `[Lead Engine] Found ${diff} new prospective client${diff !== 1 ? "s" : ""} — ${count} total in feed`,
       }, ...prev].slice(0, 80));
     }
@@ -144,7 +144,7 @@ export default function Notifications() {
     let idx = 6;
     const interval = setInterval(() => {
       const src = SENTINEL_EVENTS[idx % SENTINEL_EVENTS.length];
-      setEvents((prev) => [{ ...src, id: uid(), time: nowHHMM() }, ...prev].slice(0, 80));
+      setEvents((prev) => [{ ...src, id: uid(), time: nowHHMM() } as NotifEvent, ...prev].slice(0, 80));
       idx++;
     }, 20_000 + Math.random() * 10_000);
     return () => clearInterval(interval);
@@ -270,7 +270,7 @@ export default function Notifications() {
             <span className="text-[10px] dark:text-zinc-600 text-zinc-400">({events.length} events)</span>
           </div>
           <button
-            onClick={() => setEvents((prev) => [{ id: uid(), time: nowHHMM(), type: "sentinel", msg: "[Sentinel] Manual refresh — all systems nominal" }, ...prev].slice(0, 80))}
+            onClick={() => setEvents((prev) => [{ id: uid(), time: nowHHMM(), type: "sentinel" as const, msg: "[alpha] Manual refresh — all systems nominal" }, ...prev].slice(0, 80))}
             className="inline-flex items-center gap-1 text-[11px] dark:text-zinc-500 text-zinc-400 hover:dark:text-zinc-300 hover:text-zinc-600 transition-colors"
           >
             <RefreshCw className="w-3 h-3" /> Refresh
