@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sun, Moon, Server, Wifi, Shield, Database, Sliders, Tags, Plus, Trash2, Volume2, VolumeX, AlertCircle } from "lucide-react";
+import { Sun, Moon, Server, Wifi, Shield, Database, Sliders, Tags, Plus, Trash2, Volume2, VolumeX, AlertCircle, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { useLeads } from "@/hooks/useLeads";
 import { useKeywords, type KeywordSource } from "@/hooks/useKeywords";
@@ -10,6 +10,7 @@ interface SettingsProps {
   onToggleTheme: () => void;
   soundEnabled: boolean;
   onToggleSound: () => void;
+  onReplayTour?: () => void;
 }
 
 function Toggle({ checked, onChange, label, description }: {
@@ -244,7 +245,7 @@ function KeywordManager() {
 }
 
 // ─── Main Settings ────────────────────────────────────────────────────────────
-export default function Settings({ theme, onToggleTheme, soundEnabled, onToggleSound }: SettingsProps) {
+export default function Settings({ theme, onToggleTheme, soundEnabled, onToggleSound, onReplayTour }: SettingsProps) {
   const { data } = useLeads();
   const [notifications, setNotifications] = useState(true);
   const [autoExport, setAutoExport] = useState(false);
@@ -334,6 +335,31 @@ export default function Settings({ theme, onToggleTheme, soundEnabled, onToggleS
           </div>
         </div>
       </SectionShell>
+
+      {/* Tour Replay */}
+      {onReplayTour && (
+        <SectionShell icon={<BookOpen className="w-3.5 h-3.5" />} label="Onboarding">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <div className="text-sm dark:text-zinc-300 text-zinc-700">Replay Tour</div>
+              <div className="text-[11px] dark:text-zinc-500 text-zinc-400 mt-0.5">
+                Re-run the guided walkthrough of the Intel Engine
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                onReplayTour();
+                toast.success("Tour starting…");
+              }}
+              className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold
+                bg-blue-500/15 text-blue-400 border border-blue-500/25
+                hover:bg-blue-500/25 transition-colors active:scale-95"
+            >
+              <BookOpen className="w-3.5 h-3.5" /> Start Tour
+            </button>
+          </div>
+        </SectionShell>
+      )}
 
       {/* Export */}
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>

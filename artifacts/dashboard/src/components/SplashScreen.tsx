@@ -55,30 +55,13 @@ export default function SplashScreen({ onDone }: Props) {
     >
       <div className="flex flex-col items-center gap-8 select-none">
 
-        {/* ── Glow halo behind logo ── */}
+        {/* ── Logo video — circle, no border, blends with background ── */}
         <div className="relative flex items-center justify-center">
-          <motion.div
-            className="absolute rounded-full"
-            animate={{ opacity: [0.25, 0.55, 0.25], scale: [1, 1.15, 1] }}
-            transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
-            style={{
-              width: 160, height: 160,
-              background: "radial-gradient(circle, rgba(59,130,246,0.35) 0%, transparent 70%)",
-              filter: "blur(20px)",
-            }}
-          />
-
-          {/* ── Logo video ── */}
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.55, ease: "easeOut" }}
-            className="relative w-28 h-28 rounded-3xl overflow-hidden"
-            style={{
-              boxShadow: "0 0 40px rgba(59,130,246,0.25), 0 0 80px rgba(59,130,246,0.1), inset 0 1px 0 rgba(255,255,255,0.06)",
-              border: "1px solid rgba(59,130,246,0.25)",
-              background: "#070a12",
-            }}
+            className="relative w-32 h-32 rounded-full overflow-hidden"
           >
             <video
               ref={videoRef}

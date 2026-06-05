@@ -557,6 +557,10 @@ export default function Dashboard() {
                       onToggleTheme={toggleTheme}
                       soundEnabled={soundEnabled}
                       onToggleSound={toggleSound}
+                      onReplayTour={() => {
+                        localStorage.removeItem("proxies_sx_onboarded");
+                        setShowTour(true);
+                      }}
                     />
                   </>
                 )}
