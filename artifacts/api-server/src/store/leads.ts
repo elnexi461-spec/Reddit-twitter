@@ -153,6 +153,15 @@ export function pushLead(lead: Omit<Lead, "score" | "tier" | "claimed" | "claime
   }
 }
 
+export function unclaimLead(id: string): Lead | null {
+  const lead = leads.find((l) => l.id === id);
+  if (!lead) return null;
+  lead.claimed = false;
+  delete lead.claimedAt;
+  saveToDisk();
+  return lead;
+}
+
 export function claimLead(id: string): Lead | null {
   const lead = leads.find((l) => l.id === id);
   if (!lead) return null;

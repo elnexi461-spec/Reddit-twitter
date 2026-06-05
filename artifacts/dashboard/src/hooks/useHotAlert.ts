@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { Lead } from "./useLeads";
 
+const MIN_ALERT_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes between popups
+
 export function useHotAlert(
   leads: Lead[],
   soundEnabled: boolean,
@@ -9,9 +11,10 @@ export function useHotAlert(
   const prevHotIds = useRef<Set<string>>(new Set());
   const audioCtxRef = useRef<AudioContext | null>(null);
   const isFirstLoad = useRef(true);
+  const lastAlertAt = useRef<number>(0);
   const [flashActive, setFlashActive] = useState(false);
 
-  // Initialize AudioContext on first user interaction (browser policy)
+  // Init AudioContext on first user interaction
   useEffect(() => {
     const init = () => {
       if (!audioCtxRef.current) {
@@ -27,7 +30,6 @@ export function useHotAlert(
     const ctx = audioCtxRef.current;
     if (!ctx) return;
     try {
-      // Two ascending tones — like a notification chime
       const tones = [880, 1108.73];
       tones.forEach((freq, i) => {
         const osc = ctx.createOscillator();
@@ -52,7 +54,6 @@ export function useHotAlert(
     const hotLeads = leads.filter((l) => l.tier === "hot");
 
     if (isFirstLoad.current) {
-      // Seed the set without triggering alerts
       for (const l of hotLeads) prevHotIds.current.add(l.id);
       isFirstLoad.current = false;
       return;
@@ -63,16 +64,20 @@ export function useHotAlert(
 
     if (newHotLeads.length === 0) return;
 
-    // Fire alerts
+    // Enforce 10-minute cooldown between popups
+    const now = Date.now();
+    if (now - lastAlertAt.current < MIN_ALERT_INTERVAL_MS) return;
+    lastAlertAt.current = now;
+
     playPing();
 
     setFlashActive(true);
     const clearFlash = setTimeout(() => setFlashActive(false), 2000);
 
-    // Flash browser tab title
+    // Flash browser tab for 10 seconds
     const origTitle = document.title;
     document.title = `🔥 ${newHotLeads.length} New Hot Signal${newHotLeads.length > 1 ? "s" : ""}!`;
-    const clearTitle = setTimeout(() => { document.title = origTitle; }, 5_000);
+    const clearTitle = setTimeout(() => { document.title = origTitle; }, 10_000);
 
     onNewHotLeads(newHotLeads);
 

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { claimLead, updatePipelineStatus, addNote, type PipelineStatus } from "../store/leads.js";
+import { claimLead, unclaimLead, updatePipelineStatus, addNote, type PipelineStatus } from "../store/leads.js";
 
 const router = Router();
 
@@ -7,6 +7,15 @@ const VALID_STATUSES: PipelineStatus[] = ["unclaimed", "contacted", "qualified",
 
 router.post("/leads/:id/claim", (req, res) => {
   const lead = claimLead(req.params.id);
+  if (!lead) {
+    res.status(404).json({ error: "lead not found" });
+    return;
+  }
+  res.json(lead);
+});
+
+router.post("/leads/:id/unclaim", (req, res) => {
+  const lead = unclaimLead(req.params.id);
   if (!lead) {
     res.status(404).json({ error: "lead not found" });
     return;

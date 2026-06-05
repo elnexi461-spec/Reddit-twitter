@@ -5,14 +5,13 @@ import {
   Search, SlidersHorizontal, LayoutGrid, List,
   MessageSquare, StickyNote, ChevronRight, ChevronLeft,
   AlertCircle, RefreshCw, X, ChevronLeft as PrevIcon, ChevronRight as NextIcon,
+  Unlock,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { useLeads, type Lead, type PipelineStatus } from "@/hooks/useLeads";
 
 const PAGE_SIZE = 10;
-
-// ─── Pipeline config ─────────────────────────────────────────────────────────
 
 const PIPELINE_STAGES: { status: PipelineStatus; label: string }[] = [
   { status: "unclaimed",  label: "Unclaimed" },
@@ -34,8 +33,6 @@ const PIPELINE_COLUMN_STYLES: Record<PipelineStatus, string> = {
   qualified: "dark:bg-amber-950/20 bg-amber-50/60 border-amber-200/50 dark:border-amber-900/30",
   converted: "dark:bg-emerald-950/20 bg-emerald-50/60 border-emerald-200/50 dark:border-emerald-900/30",
 };
-
-// ─── Micro-components ────────────────────────────────────────────────────────
 
 function SourceBadge({ source }: { source: Lead["source"] }) {
   if (source === "reddit") return (
@@ -118,28 +115,78 @@ function PipelinePill({ status, onChange }: { status: PipelineStatus; onChange: 
   );
 }
 
+// ─── Inline confirm buttons ───────────────────────────────────────────────────
+
+function InlineConfirm({
+  message, confirmLabel, confirmClass, onConfirm, onCancel,
+}: {
+  message: string;
+  confirmLabel: string;
+  confirmClass: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.96 }}
+      transition={{ duration: 0.15 }}
+      className="flex items-center gap-2 flex-wrap"
+    >
+      <span className="text-xs dark:text-zinc-400 text-zinc-500 leading-snug">{message}</span>
+      <button
+        onClick={onConfirm}
+        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all active:scale-95 ${confirmClass}`}
+      >
+        {confirmLabel}
+      </button>
+      <button
+        onClick={onCancel}
+        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all
+          dark:bg-zinc-800 bg-zinc-100 dark:text-zinc-400 text-zinc-500 active:scale-95"
+      >
+        Cancel
+      </button>
+    </motion.div>
+  );
+}
+
 // ─── Lead Card ────────────────────────────────────────────────────────────────
 
 function LeadCard({
-  lead, index, isFocused, isClaiming, onClaim, onOpenOutreach, onPipelineChange, onNoteAdd,
+  lead, index, isFocused, isHighlighted, isClaiming,
+  onClaim, onUnclaim, onOpenOutreach, onPipelineChange, onNoteAdd,
 }: {
   lead: Lead;
   index: number;
   isFocused: boolean;
+  isHighlighted: boolean;
   isClaiming: boolean;
   onClaim: () => void;
+  onUnclaim: () => void;
   onOpenOutreach: () => void;
   onPipelineChange: (status: PipelineStatus) => void;
   onNoteAdd: (text: string) => void;
 }) {
   const [showNote, setShowNote] = useState(false);
   const [noteText, setNoteText] = useState("");
+  const [confirmClaim, setConfirmClaim] = useState(false);
+  const [confirmUnclaim, setConfirmUnclaim] = useState(false);
   const noteRef = useRef<HTMLTextAreaElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const timeAgo = (() => {
     try { return formatDistanceToNow(new Date(lead.timestamp), { addSuffix: true }); }
     catch { return ""; }
   })();
+
+  // Scroll into view when highlighted
+  useEffect(() => {
+    if (isHighlighted && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [isHighlighted]);
 
   const handleNoteSubmit = () => {
     if (!noteText.trim()) return;
@@ -150,15 +197,17 @@ function LeadCard({
 
   return (
     <motion.div
+      ref={cardRef}
       layout
-      data-lead-index={index}
+      data-lead-id={lead.id}
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, height: 0, marginBottom: 0 }}
       transition={{ delay: Math.min(index * 0.03, 0.3), duration: 0.2, ease: "easeOut" }}
       className={`relative rounded-xl border transition-all duration-200 overflow-hidden group
-        ${isFocused ? "ring-2 ring-blue-500/50 ring-offset-0 dark:ring-offset-0" : ""}
-        ${lead.claimed ? "opacity-60" : ""}
+        ${isFocused ? "ring-2 ring-blue-500/50" : ""}
+        ${isHighlighted ? "ring-2 ring-amber-400/70 shadow-lg shadow-amber-500/10" : ""}
+        ${lead.claimed ? "opacity-70" : ""}
         ${lead.tier === "hot"
           ? "dark:bg-red-950/10 bg-red-50/60 border-red-900/25 dark:border-red-900/20"
           : "dark:bg-zinc-900/40 bg-white border-zinc-200 dark:border-zinc-800/70"
@@ -192,6 +241,7 @@ function LeadCard({
           </code>
         </div>
 
+        {/* Action buttons row */}
         <div className="flex items-center gap-2 flex-wrap">
           <a
             href={lead.url} target="_blank" rel="noreferrer"
@@ -203,13 +253,20 @@ function LeadCard({
             Target Client <ExternalLink className="w-3 h-3" />
           </a>
 
+          {/* Claim / Unclaim */}
           {lead.claimed ? (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-emerald-500 bg-emerald-500/10 border border-emerald-500/20">
-              <Check className="w-3 h-3" /> Claimed
-            </span>
+            <button
+              onClick={() => { setConfirmUnclaim(true); setConfirmClaim(false); }}
+              disabled={isClaiming}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all
+                text-emerald-500 bg-emerald-500/10 border border-emerald-500/20
+                hover:bg-emerald-500/20 hover:text-emerald-400 active:scale-95 disabled:opacity-40"
+            >
+              {isClaiming ? "…" : <><Check className="w-3 h-3" /> Claimed</>}
+            </button>
           ) : (
             <button
-              onClick={onClaim}
+              onClick={() => { setConfirmClaim(true); setConfirmUnclaim(false); }}
               disabled={isClaiming}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
                 dark:bg-zinc-800 bg-zinc-100 dark:text-zinc-300 text-zinc-600
@@ -220,7 +277,6 @@ function LeadCard({
             </button>
           )}
 
-          {/* Reach Out — navigates to a dedicated sub-page, no scrolling */}
           <button
             onClick={onOpenOutreach}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
@@ -242,6 +298,47 @@ function LeadCard({
           </button>
         </div>
 
+        {/* Inline confirmation row */}
+        <AnimatePresence>
+          {confirmClaim && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-3 pt-3 border-t dark:border-zinc-800 border-zinc-100">
+                <InlineConfirm
+                  message="Claim this lead? It'll be marked as Contacted in your pipeline."
+                  confirmLabel="Yes, Claim"
+                  confirmClass="bg-blue-500 text-white hover:bg-blue-600"
+                  onConfirm={() => { setConfirmClaim(false); onClaim(); }}
+                  onCancel={() => setConfirmClaim(false)}
+                />
+              </div>
+            </motion.div>
+          )}
+          {confirmUnclaim && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-3 pt-3 border-t dark:border-zinc-800 border-zinc-100">
+                <InlineConfirm
+                  message="Unclaim this lead? It'll be reset to Unclaimed status."
+                  confirmLabel="Yes, Unclaim"
+                  confirmClass="bg-red-500/90 text-white hover:bg-red-500"
+                  onConfirm={() => { setConfirmUnclaim(false); onUnclaim(); }}
+                  onCancel={() => setConfirmUnclaim(false)}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Note composer */}
         <AnimatePresence>
           {showNote && (
             <motion.div
@@ -480,11 +577,7 @@ function FilterBar({
 // ─── Pagination bar ───────────────────────────────────────────────────────────
 
 function Pagination({ page, totalPages, total, onPrev, onNext }: {
-  page: number;
-  totalPages: number;
-  total: number;
-  onPrev: () => void;
-  onNext: () => void;
+  page: number; totalPages: number; total: number; onPrev: () => void; onNext: () => void;
 }) {
   const start = page * PAGE_SIZE + 1;
   const end = Math.min((page + 1) * PAGE_SIZE, total);
@@ -529,16 +622,18 @@ function Pagination({ page, totalPages, total, onPrev, onNext }: {
 
 interface HomeFeedProps {
   onReachOut: (lead: Lead) => void;
+  highlightedLeadId?: string | null;
+  onClearHighlight?: () => void;
 }
 
-export default function HomeFeed({ onReachOut }: HomeFeedProps) {
+export default function HomeFeed({ onReachOut, highlightedLeadId, onClearHighlight }: HomeFeedProps) {
   const {
     data, filteredLeads, leads, error,
     filterSource, setFilterSource,
     filterTier, setFilterTier,
     filterText, setFilterText,
     sortOrder, setSortOrder,
-    claimingId, claimLead, updatePipeline, addNote, refetch,
+    claimingId, claimLead, unclaimLead, updatePipeline, addNote, refetch,
   } = useLeads();
 
   const [viewMode, setViewMode] = useState<"feed" | "pipeline">("feed");
@@ -547,19 +642,27 @@ export default function HomeFeed({ onReachOut }: HomeFeedProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const searchRef = useRef<HTMLInputElement | null>(null);
 
-  // Stats
   const hotCount = leads.filter((l) => l.tier === "hot").length;
   const claimedCount = leads.filter((l) => l.claimed).length;
   const claimRate = leads.length ? Math.round((claimedCount / leads.length) * 100) : 0;
 
-  // Reset to page 1 whenever filters or sort changes
+  // When a highlighted lead arrives, find its page and jump to it
+  useEffect(() => {
+    if (!highlightedLeadId || !filteredLeads.length) return;
+    const idx = filteredLeads.findIndex((l) => l.id === highlightedLeadId);
+    if (idx === -1) return;
+    const targetPage = Math.floor(idx / PAGE_SIZE);
+    setCurrentPage(targetPage);
+    // Clear highlight after 4 seconds
+    const t = setTimeout(() => onClearHighlight?.(), 4000);
+    return () => clearTimeout(t);
+  }, [highlightedLeadId, filteredLeads, onClearHighlight]);
+
   useEffect(() => { setCurrentPage(0); }, [filterSource, filterTier, filterText, sortOrder]);
 
-  // Paginate
   const totalPages = Math.max(1, Math.ceil(filteredLeads.length / PAGE_SIZE));
   const pagedLeads = filteredLeads.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
 
-  // Refresh with 3-second spin
   const handleRefresh = useCallback(() => {
     if (isRefreshing) return;
     setIsRefreshing(true);
@@ -567,7 +670,6 @@ export default function HomeFeed({ onReachOut }: HomeFeedProps) {
     setTimeout(() => setIsRefreshing(false), 3000);
   }, [isRefreshing, refetch]);
 
-  // Keyboard shortcuts
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     const target = e.target as HTMLElement;
     const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA";
@@ -613,6 +715,11 @@ export default function HomeFeed({ onReachOut }: HomeFeedProps) {
     await claimLead(lead);
     toast.success(`Lead claimed: ${lead.title.slice(0, 40)}…`, { duration: 3000 });
   }, [claimLead]);
+
+  const handleUnclaim = useCallback(async (lead: Lead) => {
+    await unclaimLead(lead);
+    toast.success("Lead unclaimed — back to available pool", { duration: 3000 });
+  }, [unclaimLead]);
 
   const handlePipelineChange = useCallback(async (id: string, status: PipelineStatus) => {
     await updatePipeline(id, status);
@@ -660,14 +767,12 @@ export default function HomeFeed({ onReachOut }: HomeFeedProps) {
         </div>
       )}
 
-      {/* Error */}
       {error && (
         <div className="flex items-center gap-2 p-3 rounded-xl dark:bg-red-950/30 bg-red-50 border dark:border-red-900/40 border-red-200 text-red-500 text-sm">
           <AlertCircle className="w-4 h-4 shrink-0" /> {error}
         </div>
       )}
 
-      {/* Filter bar */}
       <FilterBar
         filterSource={filterSource} setFilterSource={setFilterSource}
         filterTier={filterTier} setFilterTier={setFilterTier}
@@ -677,7 +782,6 @@ export default function HomeFeed({ onReachOut }: HomeFeedProps) {
         searchRef={searchRef}
       />
 
-      {/* View toggle */}
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-1 dark:bg-zinc-900 bg-zinc-100 rounded-lg p-1 border dark:border-zinc-800 border-zinc-200">
           <button onClick={() => setViewMode("feed")}
@@ -695,7 +799,6 @@ export default function HomeFeed({ onReachOut }: HomeFeedProps) {
         </div>
       </div>
 
-      {/* Content */}
       <AnimatePresence mode="wait" initial={false}>
         {viewMode === "feed" ? (
           <motion.div key="feed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="space-y-3">
@@ -721,8 +824,10 @@ export default function HomeFeed({ onReachOut }: HomeFeedProps) {
                       lead={lead}
                       index={i}
                       isFocused={focusedIndex === i}
+                      isHighlighted={lead.id === highlightedLeadId}
                       isClaiming={claimingId === lead.id}
                       onClaim={() => handleClaim(lead)}
+                      onUnclaim={() => handleUnclaim(lead)}
                       onOpenOutreach={() => onReachOut(lead)}
                       onPipelineChange={(s) => handlePipelineChange(lead.id, s)}
                       onNoteAdd={(text) => handleAddNote(lead.id, text)}
@@ -730,7 +835,6 @@ export default function HomeFeed({ onReachOut }: HomeFeedProps) {
                   ))}
                 </AnimatePresence>
 
-                {/* Pagination */}
                 {totalPages > 1 && (
                   <Pagination
                     page={currentPage}

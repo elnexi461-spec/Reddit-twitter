@@ -80,6 +80,24 @@ export function useLeads() {
     }
   }, [claimingId]);
 
+  const unclaimLead = useCallback(async (lead: Lead) => {
+    if (!lead.claimed || claimingId) return;
+    setClaimingId(lead.id);
+    try {
+      const res = await fetch(`/api/leads/${lead.id}/unclaim`, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to unclaim");
+      const updated: Lead = await res.json();
+      setData((prev) => prev ? {
+        ...prev,
+        leads: prev.leads.map((l) => l.id === updated.id ? updated : l),
+      } : prev);
+    } catch {
+      // silent
+    } finally {
+      setClaimingId(null);
+    }
+  }, [claimingId]);
+
   const updatePipeline = useCallback(async (id: string, status: PipelineStatus) => {
     try {
       const res = await fetch(`/api/leads/${id}/pipeline`, {
@@ -149,6 +167,7 @@ export function useLeads() {
     filterText, setFilterText,
     sortOrder, setSortOrder,
     claimLead,
+    unclaimLead,
     updatePipeline,
     addNote,
     refetch: fetchData,
