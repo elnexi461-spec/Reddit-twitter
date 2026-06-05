@@ -6,6 +6,7 @@ import keywordsRouter from "./keywords.js";
 import leadsRouter from "./leads.js";
 import statsRouter from "./stats.js";
 import integrationsRouter from "./integrations.js";
+import competitorLeadsRouter from "./competitor-leads.js";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(keywordsRouter);
 router.use(leadsRouter);
 router.use(statsRouter);
 router.use(integrationsRouter);
+router.use(competitorLeadsRouter);
 
 export default router;

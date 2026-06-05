@@ -3,3 +3,4 @@
 - [Symptom keywords](symptom-keywords.md) — qualify.ts and keywords.ts extended with 14+ symptom signal keywords (cloudflare turnstile, datadome, playwright timeout, etc.)
 - [Terminology conventions](terminology.md) — all user-facing "Sentinel/Kill Switch/Self-Heal" phrases replaced with developer terms; internal type names kept as-is
 - [Slack/Discord notification pattern](slack-discord-notifs.md) — notifySlack/notifyDiscord in integrations.ts fire on hot/warm lead push; as const needed for union types in Notifications.tsx
+- [Competitor Intercept architecture](competitor-intercept.md) — separate store/worker/routes for competitor leads; qualifyCompetitorPost returns `competitor` field but store expects `competitorMention` — must map explicitly when calling pushCompetitorLead

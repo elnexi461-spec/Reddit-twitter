@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sun, Moon, Server, Wifi, Shield, Database, Sliders, Tags, Plus, Trash2, Volume2, VolumeX, AlertCircle, BookOpen } from "lucide-react";
+import {
+  Sun, Moon, Server, Wifi, Shield, Database, Sliders, Tags, Plus, Trash2,
+  Volume2, VolumeX, AlertCircle, BookOpen, Pencil, Save, X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useLeads } from "@/hooks/useLeads";
 import { useKeywords, type KeywordSource } from "@/hooks/useKeywords";
@@ -13,18 +16,18 @@ interface SettingsProps {
   onReplayTour?: () => void;
 }
 
-function Toggle({ checked, onChange, label, description }: {
+function Toggle({ checked, onChange, label, description, disabled }: {
   checked: boolean; onChange: (v: boolean) => void;
-  label: string; description?: string;
+  label: string; description?: string; disabled?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3">
+    <div className={`flex items-center justify-between gap-3 ${disabled ? "opacity-50 pointer-events-none" : ""}`}>
       <div>
         <div className="text-sm dark:text-zinc-300 text-zinc-700">{label}</div>
         {description && <div className="text-[11px] dark:text-zinc-500 text-zinc-400 mt-0.5">{description}</div>}
       </div>
       <button
-        onClick={() => onChange(!checked)}
+        onClick={() => !disabled && onChange(!checked)}
         className={`relative shrink-0 w-10 rounded-full transition-colors duration-200 focus:outline-none
           ${checked ? "bg-emerald-500" : "dark:bg-zinc-700 bg-zinc-300"}`}
         style={{ height: "22px" }}
@@ -41,13 +44,13 @@ function Toggle({ checked, onChange, label, description }: {
   );
 }
 
-function Slider({ label, value, onChange, min = 0, max = 100, unit = "%", description }: {
+function Slider({ label, value, onChange, min = 0, max = 100, unit = "%", description, disabled }: {
   label: string; value: number; onChange: (v: number) => void;
-  min?: number; max?: number; unit?: string; description?: string;
+  min?: number; max?: number; unit?: string; description?: string; disabled?: boolean;
 }) {
   const pct = ((value - min) / (max - min)) * 100;
   return (
-    <div className="space-y-1.5">
+    <div className={`space-y-1.5 ${disabled ? "opacity-50" : ""}`}>
       <div className="flex items-center justify-between">
         <div>
           <div className="text-sm dark:text-zinc-300 text-zinc-700">{label}</div>
@@ -57,8 +60,13 @@ function Slider({ label, value, onChange, min = 0, max = 100, unit = "%", descri
       </div>
       <div className="relative h-1.5 rounded-full dark:bg-zinc-800 bg-zinc-200">
         <div className="absolute inset-y-0 left-0 rounded-full bg-emerald-500 transition-all duration-150" style={{ width: `${pct}%` }} />
-        <input type="range" min={min} max={max} value={value} onChange={(e) => onChange(Number(e.target.value))}
-          className="absolute inset-0 w-full opacity-0 cursor-pointer h-full" />
+        <input
+          type="range" min={min} max={max} value={value}
+          onChange={(e) => !disabled && onChange(Number(e.target.value))}
+          disabled={disabled}
+          className="absolute inset-0 w-full opacity-0 h-full"
+          style={{ cursor: disabled ? "not-allowed" : "pointer" }}
+        />
       </div>
     </div>
   );
@@ -78,8 +86,8 @@ function StatusDot({ ok }: { ok: boolean }) {
   );
 }
 
-function SectionShell({ icon, label, children }: {
-  icon: React.ReactNode; label: string; children: React.ReactNode;
+function SectionShell({ icon, label, children, headerAction }: {
+  icon: React.ReactNode; label: string; children: React.ReactNode; headerAction?: React.ReactNode;
 }) {
   return (
     <motion.div
@@ -90,6 +98,7 @@ function SectionShell({ icon, label, children }: {
       <div className="px-4 py-3 border-b dark:border-zinc-800 border-zinc-100 flex items-center gap-2">
         <span className="dark:text-zinc-500 text-zinc-400">{icon}</span>
         <span className="text-[11px] font-semibold uppercase tracking-wider dark:text-zinc-500 text-zinc-400">{label}</span>
+        {headerAction && <div className="ml-auto">{headerAction}</div>}
       </div>
       <div className="p-4">{children}</div>
     </motion.div>
@@ -244,15 +253,175 @@ function KeywordManager() {
   );
 }
 
+// ─── Engine Preferences (with edit/save) ─────────────────────────────────────
+
+interface Prefs {
+  notifications: boolean;
+  autoExport: boolean;
+  filterNoise: boolean;
+  pollInterval: number;
+  maxLeads: number;
+  scoreThreshold: number;
+}
+
+const LS_PREFS_KEY = "zenrows_intel_engine_prefs";
+
+function loadPrefs(): Prefs {
+  try {
+    const raw = localStorage.getItem(LS_PREFS_KEY);
+    if (raw) return { ...defaultPrefs(), ...JSON.parse(raw) };
+  } catch {}
+  return defaultPrefs();
+}
+
+function defaultPrefs(): Prefs {
+  return {
+    notifications: true,
+    autoExport: false,
+    filterNoise: true,
+    pollInterval: 10,
+    maxLeads: 200,
+    scoreThreshold: 30,
+  };
+}
+
+function EnginePreferences() {
+  const [saved, setSaved] = useState<Prefs>(loadPrefs);
+  const [draft, setDraft] = useState<Prefs>(loadPrefs);
+  const [editing, setEditing] = useState(false);
+
+  const startEdit = () => {
+    setDraft({ ...saved });
+    setEditing(true);
+  };
+
+  const cancelEdit = () => {
+    setDraft({ ...saved });
+    setEditing(false);
+  };
+
+  const savePrefs = () => {
+    try {
+      localStorage.setItem(LS_PREFS_KEY, JSON.stringify(draft));
+    } catch {}
+    setSaved({ ...draft });
+    setEditing(false);
+    toast.success("Preferences saved");
+  };
+
+  const prefs = editing ? draft : saved;
+
+  const setField = <K extends keyof Prefs>(key: K, val: Prefs[K]) => {
+    if (!editing) return;
+    setDraft((p) => ({ ...p, [key]: val }));
+  };
+
+  const headerAction = (
+    <div className="flex items-center gap-2">
+      {editing ? (
+        <>
+          <button
+            onClick={cancelEdit}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
+              dark:bg-zinc-800 bg-zinc-100 dark:text-zinc-400 text-zinc-500
+              dark:border dark:border-zinc-700 border border-zinc-200
+              hover:dark:bg-zinc-700 hover:bg-zinc-200 active:scale-95"
+          >
+            <X className="w-3 h-3" /> Cancel
+          </button>
+          <button
+            onClick={savePrefs}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
+              bg-emerald-500 text-white hover:bg-emerald-600 active:scale-95"
+          >
+            <Save className="w-3 h-3" /> Save
+          </button>
+        </>
+      ) : (
+        <button
+          onClick={startEdit}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
+            dark:bg-zinc-800 bg-zinc-100 dark:text-zinc-400 text-zinc-500
+            dark:border dark:border-zinc-700 border border-zinc-200
+            hover:dark:bg-zinc-700 hover:bg-zinc-200 active:scale-95"
+        >
+          <Pencil className="w-3 h-3" /> Edit
+        </button>
+      )}
+    </div>
+  );
+
+  return (
+    <SectionShell icon={<Sliders className="w-3.5 h-3.5" />} label="Engine Preferences" headerAction={headerAction}>
+      <div className="space-y-4">
+        {editing && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg dark:bg-amber-950/20 bg-amber-50 border dark:border-amber-900/30 border-amber-200"
+          >
+            <Pencil className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <span className="text-xs dark:text-amber-400 text-amber-600">
+              Editing mode — adjust settings below, then click Save.
+            </span>
+          </motion.div>
+        )}
+
+        <Toggle
+          checked={prefs.notifications}
+          onChange={(v) => setField("notifications", v)}
+          label="Live notifications"
+          disabled={!editing}
+        />
+        <Toggle
+          checked={prefs.filterNoise}
+          onChange={(v) => setField("filterNoise", v)}
+          label="Noise filter active"
+          description="2026-only, ZenRows-intent semantic gate on all incoming posts"
+          disabled={!editing}
+        />
+        <Toggle
+          checked={prefs.autoExport}
+          onChange={(v) => setField("autoExport", v)}
+          label="Auto-export claimed leads"
+          description="Downloads a CSV snapshot when a lead is claimed"
+          disabled={!editing}
+        />
+
+        <div className="pt-2 border-t dark:border-zinc-800 border-zinc-100 space-y-4">
+          <Slider
+            label="Poll interval"
+            value={prefs.pollInterval}
+            onChange={(v) => setField("pollInterval", v)}
+            min={5} max={60} unit="s"
+            description="How often to refresh the lead feed"
+            disabled={!editing}
+          />
+          <Slider
+            label="Max leads in store"
+            value={prefs.maxLeads}
+            onChange={(v) => setField("maxLeads", v)}
+            min={50} max={500} unit=""
+            description="Older leads are dropped when limit is reached"
+            disabled={!editing}
+          />
+          <Slider
+            label="Minimum score threshold"
+            value={prefs.scoreThreshold}
+            onChange={(v) => setField("scoreThreshold", v)}
+            min={0} max={90} unit="pts"
+            description="Leads below this score won't appear in the feed"
+            disabled={!editing}
+          />
+        </div>
+      </div>
+    </SectionShell>
+  );
+}
+
 // ─── Main Settings ────────────────────────────────────────────────────────────
 export default function Settings({ theme, onToggleTheme, soundEnabled, onToggleSound, onReplayTour }: SettingsProps) {
   const { data } = useLeads();
-  const [notifications, setNotifications] = useState(true);
-  const [autoExport, setAutoExport] = useState(false);
-  const [filterNoise, setFilterNoise] = useState(true);
-  const [pollInterval, setPollInterval] = useState(10);
-  const [maxLeads, setMaxLeads] = useState(200);
-  const [scoreThreshold, setScoreThreshold] = useState(30);
 
   const apiOk = !!data;
   const redditOk = data?.workers.reddit === "active";
@@ -285,12 +454,31 @@ export default function Settings({ theme, onToggleTheme, soundEnabled, onToggleS
               Switch to {theme === "dark" ? "Light" : "Dark"}
             </button>
           </div>
-          <Toggle
-            checked={soundEnabled}
-            onChange={onToggleSound}
-            label={soundEnabled ? "🔊 Hot Alert Sound On" : "🔇 Hot Alert Sound Off"}
-            description="Play a chime when a new high-intent (Hot) lead is detected"
-          />
+          <div className="flex items-center justify-between p-3 rounded-lg dark:bg-zinc-800/40 bg-zinc-50 border dark:border-zinc-700/50 border-zinc-200">
+            <div className="flex items-center gap-3">
+              {soundEnabled
+                ? <Volume2 className="w-4 h-4 text-emerald-400" />
+                : <VolumeX className="w-4 h-4 dark:text-zinc-500 text-zinc-400" />}
+              <div>
+                <div className="text-sm font-medium dark:text-zinc-200 text-zinc-800">
+                  Hot Alert Sound
+                </div>
+                <div className="text-[11px] dark:text-zinc-500 text-zinc-400">
+                  Chime when a new high-intent lead is detected
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={onToggleSound}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all active:scale-95
+                ${soundEnabled
+                  ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 hover:bg-emerald-500/25"
+                  : "dark:bg-zinc-700 bg-zinc-200 dark:text-zinc-400 text-zinc-600 hover:dark:bg-zinc-600 hover:bg-zinc-300"
+                }`}
+            >
+              {soundEnabled ? "On" : "Off"}
+            </button>
+          </div>
         </div>
       </SectionShell>
 
@@ -298,10 +486,11 @@ export default function Settings({ theme, onToggleTheme, soundEnabled, onToggleS
       <SectionShell icon={<Server className="w-3.5 h-3.5" />} label="Connection Status">
         <div className="space-y-3">
           {[
-            { icon: <Database className="w-3.5 h-3.5 dark:text-zinc-500 text-zinc-400" />, label: "Intel API Server", ok: apiOk },
-            { icon: <Wifi className="w-3.5 h-3.5 text-orange-400" />, label: "Reddit · Arctic-Shift Worker", ok: redditOk },
-            { icon: <Wifi className="w-3.5 h-3.5 text-amber-400" />, label: "HN · Algolia Worker", ok: hnOk },
-            { icon: <Shield className="w-3.5 h-3.5 text-emerald-400" />, label: "ZenRows API Gateway Monitor", ok: true },
+            { icon: <Database className="w-3.5 h-3.5 dark:text-zinc-500 text-zinc-400" />, label: "Intel API Server",               ok: apiOk },
+            { icon: <Wifi     className="w-3.5 h-3.5 text-orange-400" />,                 label: "Reddit · Arctic-Shift Worker",   ok: redditOk },
+            { icon: <Wifi     className="w-3.5 h-3.5 text-amber-400" />,                  label: "HN · Algolia Worker",            ok: hnOk },
+            { icon: <Shield   className="w-3.5 h-3.5 text-emerald-400" />,                label: "ZenRows API Gateway Monitor",    ok: true },
+            { icon: <Shield   className="w-3.5 h-3.5" style={{ color: "#00ffb3" }} />,    label: "Competitor Intercept Worker",    ok: true },
           ].map(({ icon, label, ok }) => (
             <div key={label} className="flex items-center justify-between py-0.5">
               <div className="flex items-center gap-2">{icon}<span className="text-sm dark:text-zinc-300 text-zinc-700">{label}</span></div>
@@ -316,25 +505,8 @@ export default function Settings({ theme, onToggleTheme, soundEnabled, onToggleS
         <KeywordManager />
       </SectionShell>
 
-      {/* Engine Preferences */}
-      <SectionShell icon={<Sliders className="w-3.5 h-3.5" />} label="Engine Preferences">
-        <div className="space-y-4">
-          <Toggle checked={notifications} onChange={setNotifications} label="Live notifications" />
-          <Toggle checked={filterNoise} onChange={setFilterNoise}
-            label="Noise filter active"
-            description="2026-only, ZenRows-intent semantic gate on all incoming posts"
-          />
-          <Toggle checked={autoExport} onChange={setAutoExport}
-            label="Auto-export claimed leads"
-            description="Downloads a CSV snapshot when a lead is claimed"
-          />
-          <div className="pt-2 border-t dark:border-zinc-800 border-zinc-100 space-y-4">
-            <Slider label="Poll interval" value={pollInterval} onChange={setPollInterval} min={5} max={60} unit="s" description="How often to refresh the lead feed" />
-            <Slider label="Max leads in store" value={maxLeads} onChange={setMaxLeads} min={50} max={500} unit="" description="Older leads are dropped when limit is reached" />
-            <Slider label="Minimum score threshold" value={scoreThreshold} onChange={setScoreThreshold} min={0} max={90} unit="pts" description="Leads below this score won't appear in the feed" />
-          </div>
-        </div>
-      </SectionShell>
+      {/* Engine Preferences — with Edit/Save */}
+      <EnginePreferences />
 
       {/* Tour Replay */}
       {onReplayTour && (

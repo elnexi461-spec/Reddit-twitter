@@ -3,8 +3,10 @@ import { logger } from "./lib/logger";
 import { loadFromDisk } from "./store/leads.js";
 import { loadKeywords } from "./store/keywords.js";
 import { loadIntegrations } from "./store/integrations.js";
+import { loadCompetitorLeads } from "./store/competitor-leads.js";
 import { start as startReddit } from "./workers/reddit.js";
 import { startTwitter } from "./workers/twitter.js";
+import { startCompetitorWorker } from "./workers/competitor.js";
 
 const rawPort = process.env["PORT"];
 
@@ -31,6 +33,8 @@ app.listen(port, (err) => {
   loadFromDisk();
   loadKeywords();
   loadIntegrations();
+  loadCompetitorLeads();
   startReddit();
   startTwitter();
+  startCompetitorWorker();
 });
