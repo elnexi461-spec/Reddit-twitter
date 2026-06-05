@@ -78,14 +78,17 @@ function CardShell({ icon, label, accent, children }: {
 export default function SentinelMonitor() {
   const s = useSentinel();
 
-  const quarantinedPct = s.ipReputation.checked > 0
+  const blockedPct = s.ipReputation.checked > 0
     ? (s.ipReputation.quarantined / s.ipReputation.checked) * 100
     : 0;
 
-  const latencyColor = s.latency.ms < 50 ? "#22d668" : s.latency.ms < 120 ? "#f59e0b" : "#ef4444";
+  // Anti-bot success rate = inverse of blocked pct, capped nicely
+  const antiBotSuccessRate = Math.max(0, 100 - blockedPct * 200);
+
+  const latencyColor = s.latency.ms < 50 ? "#00ffb3" : s.latency.ms < 120 ? "#f59e0b" : "#ef4444";
   const latencyLabel = s.latency.ms < 50 ? "Excellent" : s.latency.ms < 120 ? "Good" : "Degraded";
 
-  const nodesPct = (s.nodePool.activeNodes / s.nodePool.totalNodes) * 100;
+  const poolPct = (s.nodePool.activeNodes / s.nodePool.totalNodes) * 100;
 
   return (
     <div className="space-y-4">
@@ -96,49 +99,49 @@ export default function SentinelMonitor() {
           <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
         </span>
         <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-          Alpha Monitor · All systems nominal · Live telemetry every 2s
+          ZenRows API Gateway Monitor · All systems nominal · Live telemetry every 2s
         </span>
       </div>
 
       {/* 2×2 card grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-        {/* Card 1: IP Reputation Tracker */}
+        {/* Card 1: Anti-Bot Success Rate */}
         <CardShell
-          icon={<Shield className="w-3.5 h-3.5 text-blue-400" />}
-          label="IP Reputation Tracker"
-          accent="bg-blue-500/10"
+          icon={<Shield className="w-3.5 h-3.5 text-emerald-400" />}
+          label="Anti-Bot Success Rate"
+          accent="bg-emerald-500/10"
         >
           <div className="flex items-center gap-4">
             <div className="relative shrink-0">
-              <Ring pct={100 - quarantinedPct * 200} color="#4f8fff" />
+              <Ring pct={antiBotSuccessRate} color="#00ffb3" />
               <div className="absolute inset-0 flex items-center justify-center">
                 <span className="text-[10px] font-bold dark:text-zinc-300 text-zinc-600">
-                  {quarantinedPct.toFixed(1)}%
+                  {antiBotSuccessRate.toFixed(1)}%
                 </span>
               </div>
             </div>
             <div className="flex-1 min-w-0 space-y-1.5">
               <div>
-                <div className="text-[10px] dark:text-zinc-500 text-zinc-400 uppercase tracking-wider">Checked</div>
+                <div className="text-[10px] dark:text-zinc-500 text-zinc-400 uppercase tracking-wider">Requests Analyzed</div>
                 <Counter value={s.ipReputation.checked} className="text-lg font-bold dark:text-zinc-100 text-zinc-900 tabular-nums" />
               </div>
               <div>
-                <div className="text-[10px] dark:text-zinc-500 text-zinc-400 uppercase tracking-wider">Quarantined</div>
+                <div className="text-[10px] dark:text-zinc-500 text-zinc-400 uppercase tracking-wider">Blocked / Quarantined</div>
                 <Counter value={s.ipReputation.quarantined} className="text-base font-semibold text-red-400 tabular-nums" />
               </div>
             </div>
           </div>
           <div className="rounded-lg dark:bg-zinc-800/50 bg-zinc-50 border dark:border-zinc-700/50 border-zinc-200 px-2.5 py-1.5">
-            <span className="text-[10px] dark:text-zinc-500 text-zinc-400">Last bad IP  </span>
+            <span className="text-[10px] dark:text-zinc-500 text-zinc-400">Last blocked IP  </span>
             <code className="text-[10px] font-mono text-red-400">{s.ipReputation.lastBadIp}</code>
           </div>
         </CardShell>
 
-        {/* Card 2: Latency Routing Matrix */}
+        {/* Card 2: Scraping API Gateway Latency */}
         <CardShell
-          icon={<Wifi className="w-3.5 h-3.5 text-emerald-400" />}
-          label="Latency Routing Matrix"
+          icon={<Wifi className="w-3.5 h-3.5" style={{ color: "#00ffb3" }} />}
+          label="Scraping API Gateway Latency"
           accent="bg-emerald-500/10"
         >
           <div className="flex items-center gap-3">
@@ -179,7 +182,7 @@ export default function SentinelMonitor() {
         {/* Card 3: Circuit Breaker */}
         <CardShell
           icon={<Power className="w-3.5 h-3.5 text-red-400" />}
-          label="Circuit Breaker"
+          label="Anti-Bot Circuit Breaker"
           accent="bg-red-500/10"
         >
           <div className="flex items-center gap-2.5">
@@ -207,28 +210,28 @@ export default function SentinelMonitor() {
           </div>
         </CardShell>
 
-        {/* Card 4: Node Recovery Pool */}
+        {/* Card 4: Residential Pool Rotation */}
         <CardShell
           icon={<Activity className="w-3.5 h-3.5 text-violet-400" />}
-          label="Node Recovery Pool"
+          label="Residential Pool Rotation"
           accent="bg-violet-500/10"
         >
           <div className="flex items-center gap-3">
             <div>
-              <div className="text-[10px] dark:text-zinc-500 text-zinc-400 uppercase tracking-wider mb-0.5">Active Nodes</div>
+              <div className="text-[10px] dark:text-zinc-500 text-zinc-400 uppercase tracking-wider mb-0.5">Active Sessions</div>
               <div className="flex items-baseline gap-1">
                 <Counter value={s.nodePool.activeNodes} className="text-2xl font-black dark:text-zinc-100 text-zinc-900 tabular-nums" />
                 <span className="text-sm dark:text-zinc-500 text-zinc-400">/ {s.nodePool.totalNodes}</span>
               </div>
             </div>
             <div className="ml-auto">
-              <Ring pct={nodesPct} color="#a78bfa" size={56} />
+              <Ring pct={poolPct} color="#a78bfa" size={56} />
             </div>
           </div>
 
           <div className="flex items-center gap-1.5 text-[10px] dark:text-zinc-500 text-zinc-400">
             <Zap className="w-3 h-3 text-violet-400" />
-            Last webhook: <span className="text-violet-400 font-medium">{s.nodePool.lastWebhook}</span>
+            Last rotation: <span className="text-violet-400 font-medium">{s.nodePool.lastWebhook}</span>
           </div>
 
           <div className="space-y-1.5">

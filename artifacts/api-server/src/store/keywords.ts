@@ -14,35 +14,44 @@ export interface Keyword {
   createdAt: string;
 }
 
-// ─── Semantic "Symptom" Keywords ─────────────────────────────────────────────
-// These target proxy-need SYMPTOMS rather than just the word "proxy".
-// A user complaining about Cloudflare Turnstile or DataDome IS a proxy buyer.
+// ─── ZenRows Semantic Target Keywords ────────────────────────────────────────
+// These target the exact developer pain points that ZenRows solves:
+// Cloudflare bypasses, anti-bot evasion, headless browser detection,
+// CAPTCHA failures, 403/429 blocks, and scraping API frustrations.
 const DEFAULTS: Omit<Keyword, "id" | "createdAt">[] = [
-  // Classic proxy keywords
-  { term: "proxy",                       source: "reddit",  enabled: true },
-  { term: "proxies",                     source: "reddit",  enabled: true },
-  { term: "residential ip",             source: "reddit",  enabled: true },
-  { term: "getting blocked",            source: "reddit",  enabled: true },
-  { term: "need proxies",               source: "twitter", enabled: true },
-  { term: "clean residential proxy",    source: "twitter", enabled: true },
-  { term: "scraping blocked",           source: "twitter", enabled: true },
-  { term: "sneaker proxy",              source: "twitter", enabled: true },
-
-  // ─── Symptom keywords (Upgrade 1: Semantic Scraping) ──────────────────────
-  { term: "blocked from website",       source: "both",    enabled: true },
+  // --- Anti-bot system failures (highest intent) ---
   { term: "cloudflare turnstile",       source: "both",    enabled: true },
-  { term: "datadome",                   source: "both",    enabled: true },
-  { term: "access denied scraping",     source: "both",    enabled: true },
-  { term: "playwright timeout",         source: "both",    enabled: true },
-  { term: "puppeteer captcha",          source: "both",    enabled: true },
   { term: "bypass turnstile",           source: "both",    enabled: true },
-  { term: "403 forbidden scraper",      source: "both",    enabled: true },
-  { term: "ip banned scraping",         source: "both",    enabled: true },
-  { term: "getting 429",                source: "both",    enabled: true },
-  { term: "imperva bypass",             source: "both",    enabled: true },
+  { term: "datadome",                   source: "both",    enabled: true },
   { term: "perimeterx block",           source: "both",    enabled: true },
   { term: "akamai bot detection",       source: "both",    enabled: true },
+  { term: "imperva bypass",             source: "both",    enabled: true },
+
+  // --- Headless browser / automation detection ---
+  { term: "playwright timeout",         source: "both",    enabled: true },
+  { term: "puppeteer captcha",          source: "both",    enabled: true },
+  { term: "puppeteer target closed",    source: "both",    enabled: true },
+  { term: "headless browser detected",  source: "both",    enabled: true },
   { term: "browser fingerprint detect", source: "both",    enabled: true },
+
+  // --- HTTP error blocks ---
+  { term: "403 forbidden scraper",      source: "both",    enabled: true },
+  { term: "getting 429",                source: "both",    enabled: true },
+  { term: "access denied scraping",     source: "both",    enabled: true },
+  { term: "blocked from website",       source: "both",    enabled: true },
+  { term: "ip banned scraping",         source: "both",    enabled: true },
+
+  // --- General scraping blocks ---
+  { term: "scraping blocked",           source: "reddit",  enabled: true },
+  { term: "getting blocked",            source: "reddit",  enabled: true },
+  { term: "web scraper blocked",        source: "both",    enabled: true },
+  { term: "scraping api failing",       source: "both",    enabled: true },
+
+  // --- Residential / proxy (common symptom pairing) ---
+  { term: "residential ip",             source: "reddit",  enabled: true },
+  { term: "proxy",                      source: "reddit",  enabled: true },
+  { term: "proxies",                    source: "reddit",  enabled: true },
+  { term: "clean residential proxy",    source: "twitter", enabled: true },
 ];
 
 let keywords: Keyword[] = [];
@@ -65,7 +74,7 @@ export function loadKeywords(): void {
   if (!fs.existsSync(BACKUP_PATH)) {
     keywords = makeDefaults();
     saveToDisk();
-    console.log(`[keywords] initialized ${keywords.length} default keywords (with symptom keywords)`);
+    console.log(`[keywords] initialized ${keywords.length} ZenRows target keywords`);
     return;
   }
 
@@ -74,13 +83,12 @@ export function loadKeywords(): void {
     const parsed: Keyword[] = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
       keywords = parsed;
-      // Merge in any new symptom defaults that don't exist yet
       const existingTerms = new Set(keywords.map((k) => k.term));
       const newDefaults = makeDefaults().filter((d) => !existingTerms.has(d.term));
       if (newDefaults.length > 0) {
         keywords.push(...newDefaults);
         saveToDisk();
-        console.log(`[keywords] merged ${newDefaults.length} new symptom keywords`);
+        console.log(`[keywords] merged ${newDefaults.length} new ZenRows target keywords`);
       }
       console.log(`[keywords] restored ${keywords.length} keywords from disk`);
       return;

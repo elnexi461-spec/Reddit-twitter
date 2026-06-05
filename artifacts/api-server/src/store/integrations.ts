@@ -67,16 +67,16 @@ export function updateIntegrationConfig(patch: Partial<IntegrationConfig>): Inte
   return { ...config };
 }
 
-// ─── Node Webhook Firing ─────────────────────────────────────────────────────
+// ─── Scraping Gateway Webhook Firing ─────────────────────────────────────────
 
 export interface WebhookPayload {
-  event: "ip_drop" | "ip_abuse" | "node_offline" | "test";
+  event: "gateway_error" | "antibot_block" | "session_offline" | "test";
   ip?: string;
   node?: string;
   reason?: string;
-  action: "replace_ip" | "quarantine" | "test";
+  action: "replace_session" | "quarantine" | "test";
   timestamp: string;
-  source: "proxies_sx_alpha_monitor";
+  source: "zenrows_intel_engine";
 }
 
 export async function fireWebhook(payload: WebhookPayload): Promise<{ ok: boolean; status?: number; error?: string }> {
@@ -88,7 +88,7 @@ export async function fireWebhook(payload: WebhookPayload): Promise<{ ok: boolea
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    "X-Source": "proxies-sx-alpha-monitor",
+    "X-Source": "zenrows-intel-engine",
   };
 
   if (cfg.apiKey) headers["Authorization"] = `Bearer ${cfg.apiKey}`;
@@ -96,13 +96,13 @@ export async function fireWebhook(payload: WebhookPayload): Promise<{ ok: boolea
 
   try {
     const res = await axios.post(cfg.nodeManagementEndpoint, payload, { headers, timeout: 8_000 });
-    console.log(`[integrations] node webhook fired — event=${payload.event} status=${res.status}`);
+    console.log(`[integrations] gateway webhook fired — event=${payload.event} status=${res.status}`);
     return { ok: true, status: res.status };
   } catch (err) {
     const msg = axios.isAxiosError(err)
       ? `HTTP ${err.response?.status ?? "network"} — ${err.message}`
       : (err as Error).message;
-    console.error(`[integrations] node webhook failed — ${msg}`);
+    console.error(`[integrations] gateway webhook failed — ${msg}`);
     return { ok: false, error: msg };
   }
 }
@@ -110,13 +110,13 @@ export async function fireWebhook(payload: WebhookPayload): Promise<{ ok: boolea
 export async function handleIpDrop(ip: string, reason: string): Promise<void> {
   const cfg = getIntegrationConfig();
   if (!cfg.autoReplaceOnDrop || !cfg.nodeManagementEndpoint) return;
-  await fireWebhook({ event: "ip_drop", ip, reason, action: "replace_ip", timestamp: new Date().toISOString(), source: "proxies_sx_alpha_monitor" });
+  await fireWebhook({ event: "gateway_error", ip, reason, action: "replace_session", timestamp: new Date().toISOString(), source: "zenrows_intel_engine" });
 }
 
 export async function handleIpAbuse(ip: string, reason: string): Promise<void> {
   const cfg = getIntegrationConfig();
   if (!cfg.autoReplaceOnAbuse || !cfg.nodeManagementEndpoint) return;
-  await fireWebhook({ event: "ip_abuse", ip, reason, action: "quarantine", timestamp: new Date().toISOString(), source: "proxies_sx_alpha_monitor" });
+  await fireWebhook({ event: "antibot_block", ip, reason, action: "quarantine", timestamp: new Date().toISOString(), source: "zenrows_intel_engine" });
 }
 
 // ─── Slack Notifications ─────────────────────────────────────────────────────
@@ -141,10 +141,10 @@ export async function notifySlack(lead: LeadAlert): Promise<void> {
   const sourceLabel = lead.source === "reddit" ? "Reddit" : "Hacker News";
 
   const payload = {
-    text: `${tierEmoji} *New ${lead.tier.toUpperCase()} lead detected — Proxies.sx Intel*`,
+    text: `${tierEmoji} *New ${lead.tier.toUpperCase()} developer lead detected — ZenRows Intel Engine*`,
     attachments: [
       {
-        color: lead.tier === "hot" ? "#ef4444" : "#f59e0b",
+        color: lead.tier === "hot" ? "#00ffb3" : "#f59e0b",
         title: lead.title.length > 100 ? lead.title.slice(0, 97) + "…" : lead.title,
         title_link: lead.url,
         fields: [
@@ -153,7 +153,7 @@ export async function notifySlack(lead: LeadAlert): Promise<void> {
           { title: "Keyword", value: `\`${lead.keyword}\``, short: true },
           { title: "Tier",    value: lead.tier.toUpperCase(), short: true },
         ],
-        footer: "Proxies.sx Alpha Monitor",
+        footer: "ZenRows Intel Engine",
         ts: Math.floor(Date.now() / 1000),
       },
     ],
@@ -177,15 +177,15 @@ export async function notifyDiscord(lead: LeadAlert): Promise<void> {
   if (lead.tier === "warm" && !cfg.notifyOnWarm) return;
 
   const tierEmoji = lead.tier === "hot" ? "🔥" : "🌡️";
-  const color = lead.tier === "hot" ? 0xef4444 : 0xf59e0b;
+  const color = lead.tier === "hot" ? 0x00ffb3 : 0xf59e0b;
   const sourceLabel = lead.source === "reddit" ? "Reddit" : "Hacker News";
 
   const payload = {
-    username: "Proxies.sx Intel",
-    avatar_url: "https://proxies.sx/favicon.ico",
+    username: "ZenRows Intel Engine",
+    avatar_url: "https://zenrows.com/favicon.ico",
     embeds: [
       {
-        title: `${tierEmoji} New ${lead.tier.toUpperCase()} Lead`,
+        title: `${tierEmoji} New ${lead.tier.toUpperCase()} Developer Lead`,
         description: lead.title.length > 200 ? lead.title.slice(0, 197) + "…" : lead.title,
         url: lead.url,
         color,
@@ -194,7 +194,7 @@ export async function notifyDiscord(lead: LeadAlert): Promise<void> {
           { name: "Score",   value: `${lead.score}pts`,  inline: true },
           { name: "Keyword", value: `\`${lead.keyword}\``, inline: true },
         ],
-        footer: { text: "Proxies.sx Alpha Monitor • intel.proxies.sx" },
+        footer: { text: "ZenRows Intel Engine • zenrows.com" },
         timestamp: new Date().toISOString(),
       },
     ],

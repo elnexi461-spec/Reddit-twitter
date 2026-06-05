@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Webhook, FlaskConical } from "lucide-react";
 
-const LS_KEY = "proxies_sx_demo_banner_dismissed";
+const LS_KEY = "zenrows_intel_demo_banner_dismissed";
 
 interface Props {
   pageName?: string;

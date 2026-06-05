@@ -5,34 +5,44 @@ export interface ScoredLead {
   tier: ScoreTier;
 }
 
-// Symptom keywords = highest intent (user is actively blocked, needs a fix NOW)
+// Highest-intent signals: developer is actively blocked RIGHT NOW — needs ZenRows immediately
 const HIGH_INTENT_KEYWORDS = new Set([
-  "residential ip",
-  "getting blocked",
-  "scraping blocked",
-  "need proxies",
-  "clean residential proxy",
-  // Upgrade 1: symptom keywords are max-intent
+  // Anti-bot system failures
   "cloudflare turnstile",
-  "blocked from website",
-  "datadome",
-  "playwright timeout",
-  "puppeteer captcha",
-  "access denied scraping",
   "bypass turnstile",
-  "403 forbidden scraper",
-  "ip banned scraping",
-  "getting 429",
-  "imperva bypass",
+  "datadome",
   "perimeterx block",
   "akamai bot detection",
+  "imperva bypass",
+  // Headless browser failures
+  "playwright timeout",
+  "puppeteer captcha",
+  "puppeteer target closed",
+  "headless browser detected",
   "browser fingerprint detect",
+  // Access blocks
+  "403 forbidden scraper",
+  "getting 403",
+  "getting 429",
+  "blocked from website",
+  "access denied scraping",
+  // Scraping API pain
+  "scraping blocked",
+  "getting blocked",
+  "ip banned scraping",
+  "web scraper blocked",
+  "scraping api failing",
 ]);
 
 const MED_INTENT_KEYWORDS = new Set([
   "proxies",
-  "sneaker proxy",
   "proxy",
+  "residential ip",
+  "scraping api",
+  "web scraping",
+  "anti-bot",
+  "antibot",
+  "clean residential proxy",
 ]);
 
 const INTENT_WORDS = [
@@ -72,7 +82,7 @@ const INTENT_WORDS = [
   "getting 429",
   "getting banned",
   "ip banned",
-  // Symptom words
+  // ZenRows pain-point signals
   "turnstile",
   "datadome",
   "playwright",
@@ -82,6 +92,13 @@ const INTENT_WORDS = [
   "access denied",
   "timeout",
   "captcha",
+  "anti-bot",
+  "cloudflare",
+  "perimeterx",
+  "akamai",
+  "imperva",
+  "forbidden",
+  "rate limit",
 ];
 
 function keywordScore(keyword: string): number {

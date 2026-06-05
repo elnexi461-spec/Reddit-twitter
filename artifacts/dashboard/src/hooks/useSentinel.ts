@@ -24,9 +24,9 @@ export interface MonitorState {
   };
 }
 
-// Keep backward-compatible export alias
 export type SentinelState = MonitorState;
 
+// ZenRows Scraping API Gateway routes
 const ROUTES = [
   ["US-East", "Frankfurt", "Amsterdam"],
   ["US-West", "Tokyo", "Singapore"],
@@ -34,20 +34,22 @@ const ROUTES = [
   ["Chicago", "Paris", "Warsaw"],
 ];
 
+// Anti-bot circuit breaker events — ZenRows context
 const CIRCUIT_EVENTS = [
-  "Throttled abusive key — 12 Mbps exceeded",
-  "Auto-terminated: 6 consecutive 403s",
-  "Bandwidth cap triggered on shared pool",
-  "IP cycling: datacenter range flagged",
-  "Emergency stop: DataDome challenge loop",
+  "Cloudflare Turnstile block intercepted — session rotated",
+  "Auto-terminated: 6 consecutive 403 Forbidden responses",
+  "DataDome challenge loop detected — gateway switched",
+  "PerimeterX fingerprint hit — residential pool rotated",
+  "Akamai bot score threshold exceeded — headless session replaced",
 ];
 
+// Scraping session recovery messages
 const RECOVERY_MSGS = [
-  "Spun up 2 fresh residential IPs (US-East)",
-  "Webhook fired: replaced 1 quarantined node",
-  "Pool replenished: +5 clean IPs added",
-  "Auto-replaced flagged datacenter IP",
-  "Rotated 3 endpoints — latency normalized",
+  "Spun up 2 fresh residential sessions (US-East pool)",
+  "Webhook fired: replaced 1 blocked scraping session",
+  "Anti-bot success rate restored to 98.4% after rotation",
+  "Auto-replaced flagged headless fingerprint",
+  "Rotated 3 gateway endpoints — latency normalized",
 ];
 
 function randomIp() {
@@ -64,8 +66,8 @@ function pick<T>(arr: T[]): T {
 
 const initialState: MonitorState = {
   ipReputation: {
-    checked: 4_812,
-    quarantined: 37,
+    checked: 12_947,
+    quarantined: 83,
     lastBadIp: "104.28.55.112",
   },
   latency: {
@@ -77,9 +79,9 @@ const initialState: MonitorState = {
     armed: true,
     lastEvent: "2m ago",
     events: [
-      { time: "18:02:14", msg: "Auto-terminated: 6 consecutive 403s" },
-      { time: "17:58:01", msg: "Throttled abusive key — 12 Mbps exceeded" },
-      { time: "17:44:32", msg: "IP cycling: datacenter range flagged" },
+      { time: "18:02:14", msg: "Auto-terminated: 6 consecutive 403 Forbidden responses" },
+      { time: "17:58:01", msg: "Cloudflare Turnstile block intercepted — session rotated" },
+      { time: "17:44:32", msg: "PerimeterX fingerprint hit — residential pool rotated" },
     ],
   },
   nodePool: {
@@ -87,9 +89,9 @@ const initialState: MonitorState = {
     totalNodes: 128,
     lastWebhook: "5m ago",
     log: [
-      { time: "18:01:07", msg: "Webhook fired: replaced 1 quarantined node" },
-      { time: "17:52:41", msg: "Pool replenished: +5 clean IPs added" },
-      { time: "17:39:18", msg: "Auto-replaced flagged datacenter IP" },
+      { time: "18:01:07", msg: "Webhook fired: replaced 1 blocked scraping session" },
+      { time: "17:52:41", msg: "Anti-bot success rate restored to 98.4% after rotation" },
+      { time: "17:39:18", msg: "Auto-replaced flagged headless fingerprint" },
     ],
   },
 };
@@ -133,7 +135,6 @@ export function useSentinel(): MonitorState {
           },
         };
 
-        // Occasionally fire a circuit-breaker event
         if (tick.current % 8 === 0) {
           const msg = pick(CIRCUIT_EVENTS);
           const time = nowHHMM();
@@ -144,7 +145,6 @@ export function useSentinel(): MonitorState {
           };
         }
 
-        // Occasionally fire a node recovery event
         if (tick.current % 11 === 0) {
           const msg = pick(RECOVERY_MSGS);
           const time = nowHHMM();

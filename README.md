@@ -1,37 +1,51 @@
-PROXIES.SX INTEL ENGINE & CRM
+ZENROWS INTEL ENGINE & CRM
 
-A lightweight, automated pipeline that scrapes high-intent proxy sales leads from Reddit and Hacker News in real time, scores them by urgency, and manages them through a simple built-in CRM dashboard.
+An automated, real-time lead generation pipeline that monitors Reddit and Hacker News for frustrated developers hitting anti-bot walls, scraping blocks, and CAPTCHA failures — and funnels them directly into a ZenRows sales CRM.
 
-Built completely with TypeScript, Express, and React.
+Built entirely with TypeScript, Express, and React.
 
 KEY FEATURES
 
-Real-Time Monitoring: Scrapes public streams on independent loops. If one loop slows down or hits an error, the rest of the app stays completely healthy.
+Real-Time Developer Signal Monitoring: Independent scraping loops watch public communities for Cloudflare Turnstile blocks, Playwright timeouts, DataDome challenges, 403 Forbidden errors, and other pain points that ZenRows solves directly.
 
-Smart Deduplication: Cleans up text and strips formatting to catch identical cross-platform spam and reposts before they touch the feed.
+Semantic Intent Scoring: Posts are automatically classified as Hot, Warm, or Cool based on urgency signals — a developer hitting a Puppeteer block right now scores maximum intent.
 
-Strict 2026 Filter: Automatically drops old archive threads so you only focus on active, current-year buyers.
+Smart Deduplication: Normalises text and strips formatting to eliminate cross-platform reposts before they enter the feed.
 
-Intent-Based Scoring: Processes titles and posts, automatically sorting them into Hot, Warm, or Cool categories so reps can target high-urgency issues immediately.
+Strict 2026 Filter: Drops stale archive threads — only active, current-year developer pain enters the pipeline.
 
-CRM Lead Claiming: Reps can click "Claim" to lock a lead. This prevents double-claiming and syncs with the server instantly.
+CRM Lead Claiming: Reps click "Claim" to lock a lead instantly, preventing double-handling and syncing status to the server in real time.
 
-1-Click CSV Export: A simple button in the header lets you grab a clean spreadsheet of all filtered leads for your sales pipeline.
+Pipeline Management: Track leads through Unclaimed → Contacted → Qualified → Converted stages with a visual board view.
+
+1-Click CSV Export: Export a clean spreadsheet of all filtered leads for downstream sales tooling.
+
+ZenRows API Gateway Monitor: Live sentinel dashboard showing Anti-Bot Success Rate, Scraping API Gateway Latency, Anti-Bot Circuit Breaker status, and Residential Pool Rotation health — all updating every 2 seconds.
+
+Slack & Discord Alerts: Instant webhook notifications on every hot lead detected, with full lead metadata in the payload.
 
 PROJECT STRUCTURE
 
-/src/workers/ — Independent background scraping loops (Reddit & HN).
+/src/workers/ — Independent background loops (Reddit & Hacker News) targeting ZenRows-relevant developer pain keywords.
 
-/src/store/ — Local state store handling text normalization, deduplication, 2026 gating, and rolling disk persistence.
+/src/store/ — Local state store with text normalisation, deduplication, 2026 gating, and rolling disk persistence.
 
-/src/routes/ — Simple API endpoints for managing live state, claims, and streaming CSV downloads.
+/src/lib/qualify.ts — Semantic filtering engine: classifies posts by Cloudflare, PerimeterX, Akamai, DataDome, headless browser, and scraping block signals.
 
-/src/components/ — Sleek, scannable React frontend dashboard matching a clean dark-mode aesthetic.
+/src/lib/score.ts — Intent scoring: Hot/Warm/Cool tiering based on anti-bot system mentions and urgency language.
+
+/src/routes/ — REST API endpoints for lead management, keyword control, integrations config, and CSV export.
+
+/src/components/ — React CRM dashboard with dark-mode ZenRows branding, live feed, pipeline board, analytics, and sentinel monitor.
 
 TECH STACK
 
 Backend: Node.js, TypeScript, Express, Axios
 
-Frontend: React, Tailwind CSS
+Frontend: React 19, Tailwind CSS 4 (ZenRows mint-teal theme), Framer Motion
 
-Database: Native file system (fs) rolling JSON backup (No heavy DB)
+Database: Native file system (fs) rolling JSON backup — no heavy DB dependency
+
+HOW IT WORKS
+
+The engine monitors developer communities for exact pain points: a developer complaining that "Playwright keeps timing out on Cloudflare" or "getting 403 on every scraping request" is a live ZenRows buyer. The semantic engine captures them, scores their urgency, and surfaces them to the sales team in real time — before they find a competitor.

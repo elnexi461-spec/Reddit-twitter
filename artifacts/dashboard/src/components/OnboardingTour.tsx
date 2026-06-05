@@ -16,10 +16,10 @@ interface Step {
 const STEPS: Step[] = [
   {
     icon: <Sparkles className="w-7 h-7" />,
-    color: "#3b82f6",
-    title: "Welcome to Proxies.sx Intel Engine 👋",
-    body: "This is your autonomous lead generation dashboard. It monitors Reddit, Hacker News, and other sources 24/7 — surfacing people who need proxies right now.",
-    tip: "New signals appear automatically every 10 seconds.",
+    color: "#00ffb3",
+    title: "Welcome to ZenRows Intel Engine 👋",
+    body: "This is your autonomous lead generation dashboard. It monitors Reddit, Hacker News, and other sources 24/7 — surfacing developers hitting Cloudflare blocks, Playwright timeouts, and anti-bot walls right now.",
+    tip: "New developer pain signals appear automatically every 10 seconds.",
   },
   {
     icon: <Activity className="w-7 h-7" />,
@@ -38,9 +38,9 @@ const STEPS: Step[] = [
   {
     icon: <Shield className="w-7 h-7" />,
     color: "#10b981",
-    title: "Alpha Monitor — Infrastructure Health",
-    body: "The Alpha Monitor tab shows live infrastructure telemetry: IP health, circuit-breaker status, and node recovery pool. Currently shown with demo data.",
-    tip: "Connect your proxy infrastructure API to see real metrics here.",
+    title: "ZenRows API Gateway Monitor",
+    body: "The ZenRows Gateway Monitor tab shows live scraping telemetry: anti-bot success rate, gateway latency, circuit-breaker status, and residential pool rotation health. Currently shown with demo data.",
+    tip: "Connect your ZenRows API gateway to see real metrics here.",
   },
   {
     icon: <Webhook className="w-7 h-7" />,
@@ -58,7 +58,7 @@ const STEPS: Step[] = [
   },
 ];
 
-const LS_KEY = "proxies_sx_onboarded";
+const LS_KEY = "zenrows_intel_onboarded";
 
 export function isNewUser(): boolean {
   try { return !localStorage.getItem(LS_KEY); } catch { return false; }
@@ -118,7 +118,7 @@ export default function OnboardingTour({ onClose }: Props) {
           style={{
             background: "linear-gradient(160deg, #0c0f1e 0%, #0a0d1a 100%)",
             border: "1px solid rgba(255,255,255,0.08)",
-            boxShadow: "0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(59,130,246,0.12)",
+            boxShadow: "0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,255,180,0.1)",
           }}
         >
           {/* Header gradient bar */}

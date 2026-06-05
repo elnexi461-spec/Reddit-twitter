@@ -169,7 +169,7 @@ function buildDM(lead: Lead, ctx: ReturnType<typeof extractContext>): Template {
     type: "dm",
     label: "Quick DM",
     icon: <MessageSquare className="w-3.5 h-3.5" />,
-    body: `${openings[angle]}\n\nAt Proxies.sx we offer ${proxyType} with ${antiBot} bypass built in — 40M+ IPs, pay-per-GB, no seats.\n\n${cta}`,
+    body: `${openings[angle]}\n\nAt ZenRows we offer a Web Scraping API with ${antiBot} bypass built in — handles Cloudflare, DataDome, Playwright detection, and more. Pay-per-request, no seats.\n\n${cta}`,
   };
 }
 
@@ -192,52 +192,52 @@ function buildEmail(lead: Lead, ctx: ReturnType<typeof extractContext>): Templat
   const bodies: Record<string, string> = {
     story:
       `Hi,\n\nFound your post on ${platform} about ${problemDetail}.\n\n` +
-      `${antiBot} is designed to catch exactly what most proxy services offer — ` +
+      `${antiBot} is designed to catch exactly what most scraping setups send — ` +
       `it cross-checks IP reputation, TLS fingerprint, and HTTP/2 frame ordering in a single request. ` +
-      `That's why datacenter or cheap rotating proxies stop working overnight.\n\n` +
-      `At Proxies.sx we solve this with:\n` +
-      `• 40M+ real residential IPs (actual ISP-assigned, not hosting ASNs)\n` +
-      `• Auto-rotation with browser-grade TLS fingerprints (JA3 + HTTP/2 SETTINGS)\n` +
+      `That's why headless browsers and plain HTTP clients stop working overnight.\n\n` +
+      `At ZenRows we solve this with:\n` +
+      `• A Web Scraping API that handles ${antiBot} bypass out of the box\n` +
+      `• Real browser rendering + anti-fingerprint headers auto-applied\n` +
       `• ${antiBot} bypass — preconfigured, works day one${langLine}\n` +
-      `• Pay-per-GB, no monthly seats or minimums\n\n` +
-      `Most teams unblock their ${useCase} within 24 hours. Free 500MB trial — 2-minute setup.\n\n` +
-      `— [Your Name], Proxies.sx\nhttps://proxies.sx`,
+      `• Pay-per-request, no monthly seats or minimums\n\n` +
+      `Most teams unblock their ${useCase} within 24 hours. Free trial — 2-minute setup.\n\n` +
+      `— [Your Name], ZenRows\nhttps://zenrows.com`,
     bullets:
-      `Hi,\n\nYour ${platform} post about ${problemDetail} caught our eye — this is exactly what Proxies.sx was built for.\n\n` +
+      `Hi,\n\nYour ${platform} post about ${problemDetail} caught our eye — this is exactly what ZenRows was built for.\n\n` +
       `Here's why ${antiBot} is specifically hard:\n` +
       `• It uses IP reputation scoring + behavioral analysis combined\n` +
-      `• Standard rotating proxies fail because the ASN flags them immediately\n` +
-      `• Most "residential" proxies are actually peer-to-peer and get flagged too\n\n` +
-      `What we offer instead:\n` +
-      `• Verified ISP-grade residential IPs — not peer-to-peer${langLine}\n` +
-      `• ${antiBot} bypass preconfigured out of the box\n` +
-      `• Sticky sessions + auto-rotation in one endpoint\n` +
-      `• Pay-per-GB — you only pay for what you use\n\n` +
-      `Want to test it on your ${useCase} setup? Free 500MB, no card needed.\n\n` +
-      `— [Your Name], Proxies.sx\nhttps://proxies.sx`,
+      `• Standard scrapers fail because the TLS fingerprint and ASN flag them immediately\n` +
+      `• Headless browsers get detected via canvas fingerprint and HTTP/2 settings\n\n` +
+      `What ZenRows offers instead:\n` +
+      `• A scraping API that handles ${antiBot} bypass automatically${langLine}\n` +
+      `• Real browser rendering with stealth headers\n` +
+      `• Rotating residential IPs + anti-bot evasion in one API call\n` +
+      `• Pay-per-request — you only pay for what you use\n\n` +
+      `Want to test it on your ${useCase} setup? Free trial, no card needed.\n\n` +
+      `— [Your Name], ZenRows\nhttps://zenrows.com`,
     technical:
       `Hi,\n\nSaw your post about ${problemDetail}.\n\n` +
       `The root cause: ${antiBot} combines IP reputation lookup with TLS client hello fingerprinting ` +
       `(JA3/JA3S) and HTTP/2 SETTINGS frame analysis. Even a clean IP gets flagged if the TLS ` +
       `fingerprint matches known automation stacks${language ? ` like ${language}'s default ssl library` : ""}.\n\n` +
-      `Our solution:\n` +
-      `• Residential IPs on genuine ISP ASNs (not hosting providers)\n` +
-      `• TLS fingerprints that match real Chrome/Firefox/Safari clients\n` +
-      `• ${antiBot}-specific header profiles included${langLine}\n` +
-      `• 40M+ IPs, 195 countries, pay-per-GB\n\n` +
-      `500MB free trial — drop me a reply and I'll get you set up today.\n\n` +
-      `— [Your Name], Proxies.sx\nhttps://proxies.sx`,
+      `ZenRows solves this at the API layer:\n` +
+      `• Requests proxied through residential IPs on genuine ISP ASNs\n` +
+      `• TLS fingerprints spoofed to match real Chrome/Firefox/Safari clients\n` +
+      `• ${antiBot}-specific header profiles applied automatically${langLine}\n` +
+      `• Simple REST API — one endpoint replaces your entire scraping stack\n\n` +
+      `Free trial — drop me a reply and I'll get you set up today.\n\n` +
+      `— [Your Name], ZenRows\nhttps://zenrows.com`,
     roi:
-      `Hi,\n\nFounders and devs posting on ${platform} about ${antiBot} issues usually fall into one of two camps: ` +
-      `either they've wasted weeks fighting it themselves, or they've already paid for a "solution" that stopped working.\n\n` +
+      `Hi,\n\nDevs posting on ${platform} about ${antiBot} issues usually fall into one of two camps: ` +
+      `either they've wasted weeks fighting it themselves, or they've already paid for a tool that stopped working.\n\n` +
       `If that sounds familiar — here's what actually works for ${useCase}:\n\n` +
-      `→ ${proxyType.charAt(0).toUpperCase() + proxyType.slice(1)} on real ISP ASNs\n` +
-      `→ Browser-grade TLS fingerprints (not automation-default)\n` +
-      `→ ${antiBot} bypass profiles, preconfigured${langLine}\n\n` +
-      `Proxies.sx: 40M+ IPs, pay-per-GB, free 500MB trial.\n` +
+      `→ ZenRows Web Scraping API — ${antiBot} bypass handled server-side\n` +
+      `→ Real browser rendering with anti-fingerprint headers\n` +
+      `→ Residential IP rotation + stealth headers in one API call${langLine}\n\n` +
+      `ZenRows: pay-per-request, free trial, no card needed.\n` +
       `Most customers stop fighting ${antiBot} blocks within 24 hours.\n\n` +
       `Worth a try?\n\n` +
-      `— [Your Name], Proxies.sx\nhttps://proxies.sx`,
+      `— [Your Name], ZenRows\nhttps://zenrows.com`,
   };
 
   return {
@@ -266,7 +266,7 @@ function buildReply(lead: Lead, ctx: ReturnType<typeof extractContext>): Templat
       `${isNewbie
         ? `If you want a step-by-step, happy to help — what's your tech stack?`
         : `If you want, I can share a working config for ${antiBot} specifically.`}` +
-      `\n\n(We handle this end-to-end at Proxies.sx if you'd rather skip the setup — ${proxyType} with ${antiBot} bypass preconfigured.)`,
+      `\n\n(ZenRows handles this end-to-end if you'd rather skip the setup — ${antiBot} bypass preconfigured in a single API call.)`,
 
     technical:
       `${antiBot} uses a multi-layer detection pipeline:\n\n` +

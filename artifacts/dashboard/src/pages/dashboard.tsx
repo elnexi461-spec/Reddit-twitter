@@ -27,7 +27,7 @@ export const useTheme = () => useContext(ThemeContext);
 // ─── Tab config ───────────────────────────────────────────────────────────────
 type Tab = "feed" | "sentinel" | "notifications" | "settings" | "integrations";
 
-const LS_TAB_KEY = "proxies_sx_last_tab";
+const LS_TAB_KEY = "zenrows_intel_last_tab";
 
 function getSavedTab(): Tab {
   try {
@@ -39,7 +39,7 @@ function getSavedTab(): Tab {
 
 const TABS: { id: Tab; label: string; mobileLabel: string; icon: React.ReactNode }[] = [
   { id: "feed",          label: "Live Feed",     mobileLabel: "Feed",    icon: <Activity     className="w-5 h-5" /> },
-  { id: "sentinel",      label: "Alpha Monitor",  mobileLabel: "Alpha",   icon: <Shield       className="w-5 h-5" /> },
+  { id: "sentinel",      label: "Gateway Monitor", mobileLabel: "Monitor", icon: <Shield       className="w-5 h-5" /> },
   { id: "notifications", label: "Analytics",     mobileLabel: "Stats",   icon: <Bell         className="w-5 h-5" /> },
   { id: "integrations",  label: "Integrations",  mobileLabel: "Webhooks",icon: <Webhook      className="w-5 h-5" /> },
   { id: "settings",      label: "Settings",      mobileLabel: "Settings",icon: <SettingsIcon className="w-5 h-5" /> },
@@ -49,18 +49,18 @@ const MOBILE_TABS: Tab[] = ["feed", "sentinel", "notifications", "integrations"]
 
 const TAB_TITLES: Record<Tab, string> = {
   feed:          "Live Intelligence Feed",
-  sentinel:      "Alpha Monitor",
+  sentinel:      "Gateway Monitor",
   notifications: "Analytics & Activity",
   settings:      "Engine Settings",
   integrations:  "Integrations & Webhooks",
 };
 
 const TAB_SUBTITLES: Record<Tab, string> = {
-  feed:          "Real-time proxy buyer signals · 2026 only · sorted by recency",
-  sentinel:      "Live proxy infrastructure telemetry · circuit-breaker armed · updates every 2s",
+  feed:          "Real-time developer pain signals · 2026 only · sorted by urgency",
+  sentinel:      "Live ZenRows API gateway telemetry · anti-bot circuit breaker armed · updates every 2s",
   notifications: "Lead analytics, pipeline funnel, and activity log",
   settings:      "Keyword management, API status, engine configuration",
-  integrations:  "Node management endpoints · auto IP replacement · webhook config",
+  integrations:  "Scraping API gateway endpoints · auto session rotation · webhook config",
 };
 
 const tabVariants = {
@@ -76,8 +76,8 @@ function NavLogo({ size = "md" }: { size?: "sm" | "md" }) {
     <div
       className={`${dim} rounded-lg overflow-hidden shrink-0`}
       style={{
-        border: "1px solid rgba(59,130,246,0.3)",
-        boxShadow: "0 0 8px rgba(59,130,246,0.15)",
+        border: "1px solid rgba(0,255,179,0.25)",
+        boxShadow: "0 0 8px rgba(0,255,179,0.12)",
       }}
     >
       <video
@@ -172,7 +172,7 @@ function TopNav({
       <div className="flex items-center gap-2.5 shrink-0 mr-1">
         <NavLogo size="md" />
         <span className="font-bold text-sm tracking-tight dark:text-zinc-100 text-zinc-900">
-          Proxies<span className="text-blue-400">.sx</span>
+          ZenRows<span style={{ color: "#00ffb3" }}></span>
           <span className="hidden lg:inline text-[10px] font-normal dark:text-zinc-600 text-zinc-400 ml-1.5 tracking-normal">Intel Engine</span>
         </span>
         {hotCount > 0 && (
@@ -446,7 +446,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-2">
             <NavLogo size="sm" />
             <span className="font-bold text-[13px] dark:text-zinc-100 text-zinc-900">
-              Proxies<span className="text-blue-400">.sx</span>
+              ZenRows<span style={{ color: "#00ffb3" }}></span>
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -558,7 +558,7 @@ export default function Dashboard() {
                       soundEnabled={soundEnabled}
                       onToggleSound={toggleSound}
                       onReplayTour={() => {
-                        localStorage.removeItem("proxies_sx_onboarded");
+                        localStorage.removeItem("zenrows_intel_onboarded");
                         setShowTour(true);
                       }}
                     />

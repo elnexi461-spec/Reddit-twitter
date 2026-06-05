@@ -26,7 +26,7 @@ function Toggle({ checked, onChange, label, description }: {
       <button
         onClick={() => onChange(!checked)}
         className={`relative shrink-0 w-10 rounded-full transition-colors duration-200 focus:outline-none
-          ${checked ? "bg-blue-500" : "dark:bg-zinc-700 bg-zinc-300"}`}
+          ${checked ? "bg-emerald-500" : "dark:bg-zinc-700 bg-zinc-300"}`}
         style={{ height: "22px" }}
         role="switch" aria-checked={checked}
       >
@@ -56,7 +56,7 @@ function Slider({ label, value, onChange, min = 0, max = 100, unit = "%", descri
         <span className="text-xs font-mono font-bold dark:text-zinc-400 text-zinc-500">{value}{unit}</span>
       </div>
       <div className="relative h-1.5 rounded-full dark:bg-zinc-800 bg-zinc-200">
-        <div className="absolute inset-y-0 left-0 rounded-full bg-blue-500 transition-all duration-150" style={{ width: `${pct}%` }} />
+        <div className="absolute inset-y-0 left-0 rounded-full bg-emerald-500 transition-all duration-150" style={{ width: `${pct}%` }} />
         <input type="range" min={min} max={max} value={value} onChange={(e) => onChange(Number(e.target.value))}
           className="absolute inset-0 w-full opacity-0 cursor-pointer h-full" />
       </div>
@@ -152,7 +152,7 @@ function KeywordManager() {
           className="flex-1 text-sm px-3 py-2 rounded-lg dark:bg-zinc-800 bg-zinc-50
             dark:border dark:border-zinc-700 border border-zinc-200
             dark:text-zinc-200 text-zinc-800 placeholder:dark:text-zinc-600 placeholder:text-zinc-400
-            focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+            focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
         />
         <select
           value={newSource}
@@ -169,7 +169,7 @@ function KeywordManager() {
           type="submit"
           disabled={!newTerm.trim() || adding}
           className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold
-            bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-40 transition-colors active:scale-95"
+            bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-40 transition-colors active:scale-95"
         >
           <Plus className="w-3.5 h-3.5" /> {adding ? "Adding…" : "Add"}
         </button>
@@ -215,7 +215,7 @@ function KeywordManager() {
                 <button
                   onClick={() => handleToggle(kw.id, !kw.enabled)}
                   className={`relative shrink-0 w-8 rounded-full transition-colors focus:outline-none
-                    ${kw.enabled ? "bg-blue-500" : "dark:bg-zinc-700 bg-zinc-300"}`}
+                    ${kw.enabled ? "bg-emerald-500" : "dark:bg-zinc-700 bg-zinc-300"}`}
                   style={{ height: "18px" }}
                 >
                   <motion.div
@@ -301,7 +301,7 @@ export default function Settings({ theme, onToggleTheme, soundEnabled, onToggleS
             { icon: <Database className="w-3.5 h-3.5 dark:text-zinc-500 text-zinc-400" />, label: "Intel API Server", ok: apiOk },
             { icon: <Wifi className="w-3.5 h-3.5 text-orange-400" />, label: "Reddit · Arctic-Shift Worker", ok: redditOk },
             { icon: <Wifi className="w-3.5 h-3.5 text-amber-400" />, label: "HN · Algolia Worker", ok: hnOk },
-            { icon: <Shield className="w-3.5 h-3.5 text-blue-400" />, label: "Alpha Monitor", ok: true },
+            { icon: <Shield className="w-3.5 h-3.5 text-emerald-400" />, label: "ZenRows API Gateway Monitor", ok: true },
           ].map(({ icon, label, ok }) => (
             <div key={label} className="flex items-center justify-between py-0.5">
               <div className="flex items-center gap-2">{icon}<span className="text-sm dark:text-zinc-300 text-zinc-700">{label}</span></div>
@@ -322,7 +322,7 @@ export default function Settings({ theme, onToggleTheme, soundEnabled, onToggleS
           <Toggle checked={notifications} onChange={setNotifications} label="Live notifications" />
           <Toggle checked={filterNoise} onChange={setFilterNoise}
             label="Noise filter active"
-            description="2026-only, proxy-intent regex gate on all incoming posts"
+            description="2026-only, ZenRows-intent semantic gate on all incoming posts"
           />
           <Toggle checked={autoExport} onChange={setAutoExport}
             label="Auto-export claimed leads"
@@ -352,8 +352,8 @@ export default function Settings({ theme, onToggleTheme, soundEnabled, onToggleS
                 toast.success("Tour starting…");
               }}
               className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold
-                bg-blue-500/15 text-blue-400 border border-blue-500/25
-                hover:bg-blue-500/25 transition-colors active:scale-95"
+                bg-emerald-500/15 text-emerald-400 border border-emerald-500/25
+                hover:bg-emerald-500/25 transition-colors active:scale-95"
             >
               <BookOpen className="w-3.5 h-3.5" /> Start Tour
             </button>

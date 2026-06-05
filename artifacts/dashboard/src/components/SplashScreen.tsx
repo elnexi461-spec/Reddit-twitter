@@ -6,9 +6,9 @@ interface Props {
 }
 
 const LOADING_STEPS = [
-  "Initialising Intel Engine…",
-  "Connecting data streams…",
-  "Loading lead signals…",
+  "Initialising ZenRows Intel Engine…",
+  "Connecting developer signal streams…",
+  "Loading scraping pain point feeds…",
   "Almost ready…",
 ];
 
@@ -18,13 +18,11 @@ export default function SplashScreen({ onDone }: Props) {
   const fallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [stepIdx, setStepIdx] = useState(0);
 
-  // Cycle through loading text
   useEffect(() => {
     const id = setInterval(() => setStepIdx((i) => (i + 1) % LOADING_STEPS.length), 700);
     return () => clearInterval(id);
   }, []);
 
-  // Fallback: fire onDone after 6s if video never ends
   useEffect(() => {
     fallbackRef.current = setTimeout(onDone, 6000);
     return () => { if (fallbackRef.current) clearTimeout(fallbackRef.current); };
@@ -33,35 +31,34 @@ export default function SplashScreen({ onDone }: Props) {
   const handleEnded = () => {
     playCount.current += 1;
     if (playCount.current < 2) {
-      // Replay for the second time
       videoRef.current?.play().catch(() => {});
     } else {
-      // Two plays complete — fire done immediately
       if (fallbackRef.current) clearTimeout(fallbackRef.current);
       onDone();
     }
   };
 
-  const handleError = () => {
-    // Video failed to load — use fallback timer (already set)
-  };
+  const handleError = () => {};
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
       style={{
-        background: "radial-gradient(ellipse at 50% 40%, #0a0d1a 0%, #050508 70%)",
+        background: "radial-gradient(ellipse at 50% 40%, #071a14 0%, #030a07 70%)",
       }}
     >
       <div className="flex flex-col items-center gap-8 select-none">
 
-        {/* ── Logo video — circle, no border, blends with background ── */}
+        {/* ── Logo video ── */}
         <div className="relative flex items-center justify-center">
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.55, ease: "easeOut" }}
             className="relative w-32 h-32 rounded-full overflow-hidden"
+            style={{
+              boxShadow: "0 0 40px rgba(0,255,180,0.18), 0 0 0 1px rgba(0,255,180,0.12)",
+            }}
           >
             <video
               ref={videoRef}
@@ -92,11 +89,11 @@ export default function SplashScreen({ onDone }: Props) {
               WebkitTextFillColor: "transparent",
             }}
           >
-            Proxies<span style={{ color: "#3b82f6", WebkitTextFillColor: "#3b82f6" }}>.sx</span>
+            ZenRows<span style={{ color: "#00ffb3", WebkitTextFillColor: "#00ffb3" }}></span>
           </div>
           <div
             className="text-[11px] font-semibold tracking-[0.32em] uppercase"
-            style={{ color: "rgba(148,163,184,0.5)", fontFamily: "Inter, sans-serif" }}
+            style={{ color: "rgba(0,255,180,0.45)", fontFamily: "Inter, sans-serif" }}
           >
             Intel Engine
           </div>
@@ -109,15 +106,14 @@ export default function SplashScreen({ onDone }: Props) {
           transition={{ delay: 0.6, duration: 0.4 }}
           className="flex flex-col items-center gap-3 w-64"
         >
-          {/* Bar track */}
           <div
             className="w-full h-[3px] rounded-full overflow-hidden"
-            style={{ background: "rgba(255,255,255,0.06)" }}
+            style={{ background: "rgba(0,255,180,0.08)" }}
           >
             <motion.div
               className="h-full rounded-full"
               style={{
-                background: "linear-gradient(90deg, #1d4ed8, #3b82f6, #60a5fa, #3b82f6)",
+                background: "linear-gradient(90deg, #00a86b, #00ffb3, #00ffd5, #00ffb3)",
                 backgroundSize: "200% 100%",
               }}
               initial={{ width: "0%", backgroundPosition: "0% 50%" }}
@@ -126,7 +122,6 @@ export default function SplashScreen({ onDone }: Props) {
             />
           </div>
 
-          {/* Animated loading text */}
           <div className="h-4 flex items-center justify-center overflow-hidden">
             <AnimatePresence mode="wait" initial={false}>
               <motion.span
@@ -137,7 +132,7 @@ export default function SplashScreen({ onDone }: Props) {
                 transition={{ duration: 0.25 }}
                 className="text-[11px] font-medium tracking-widest"
                 style={{
-                  color: "rgba(148,163,184,0.55)",
+                  color: "rgba(0,255,180,0.45)",
                   fontFamily: "Inter, sans-serif",
                   letterSpacing: "0.15em",
                 }}
@@ -147,13 +142,12 @@ export default function SplashScreen({ onDone }: Props) {
             </AnimatePresence>
           </div>
 
-          {/* Three pulsing dots */}
           <div className="flex items-center gap-1.5">
             {[0, 1, 2].map((i) => (
               <motion.div
                 key={i}
                 className="w-1 h-1 rounded-full"
-                style={{ background: "#3b82f6" }}
+                style={{ background: "#00ffb3" }}
                 animate={{ opacity: [0.2, 1, 0.2], scale: [0.8, 1.2, 0.8] }}
                 transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2, ease: "easeInOut" }}
               />

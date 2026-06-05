@@ -22,7 +22,7 @@ function SectionCard({ icon, title, subtitle, children }: {
       style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}
     >
       <div className="px-5 py-4 border-b dark:border-zinc-800 border-zinc-100 flex items-center gap-3">
-        <div className="p-2 rounded-xl dark:bg-zinc-800 bg-zinc-100 dark:text-blue-400 text-blue-500">
+        <div className="p-2 rounded-xl dark:bg-zinc-800 bg-zinc-100 dark:text-emerald-400 text-emerald-600">
           {icon}
         </div>
         <div>
@@ -60,7 +60,7 @@ function SecretInput({ label, value, onChange, placeholder, description }: {
             dark:border dark:border-zinc-700 border border-zinc-200
             dark:text-zinc-200 text-zinc-800
             placeholder:dark:text-zinc-600 placeholder:text-zinc-400
-            focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all"
+            focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all"
         />
         <button
           type="button"
@@ -98,7 +98,7 @@ function TextInput({ label, value, onChange, placeholder, description, type = "t
           dark:border dark:border-zinc-700 border border-zinc-200
           dark:text-zinc-200 text-zinc-800
           placeholder:dark:text-zinc-600 placeholder:text-zinc-400
-          focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all"
+          focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all"
       />
     </div>
   );
@@ -118,7 +118,7 @@ function AutoToggle({ label, description, checked, onChange }: {
       </div>
       <button
         onClick={() => onChange(!checked)}
-        className={`shrink-0 transition-colors duration-200 ${checked ? "text-blue-500" : "dark:text-zinc-600 text-zinc-400"}`}
+        className={`shrink-0 transition-colors duration-200 ${checked ? "text-emerald-500" : "dark:text-zinc-600 text-zinc-400"}`}
       >
         {checked ? <ToggleRight className="w-9 h-9" /> : <ToggleLeft className="w-9 h-9" />}
       </button>
@@ -227,44 +227,44 @@ export default function Integrations() {
         initial={{ opacity: 0, y: -6 }}
         animate={{ opacity: 1, y: 0 }}
         className="flex items-start gap-3 px-4 py-3 rounded-xl
-          dark:bg-blue-950/20 bg-blue-50/80
-          border dark:border-blue-900/30 border-blue-200/80"
+          dark:bg-emerald-950/20 bg-emerald-50/80
+          border dark:border-emerald-900/30 border-emerald-200/80"
       >
-        <Info className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
-        <div className="text-xs dark:text-blue-300/80 text-blue-700 leading-relaxed">
+        <Info className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+        <div className="text-xs dark:text-emerald-300/80 text-emerald-700 leading-relaxed">
           <span className="font-semibold">Plug-and-Play Integration.</span>{" "}
-          When the Alpha Monitor detects an IP drop or abuse event, it automatically fires a JSON webhook
-          to your Node Management endpoint — replacing the IP with{" "}
+          When the ZenRows API Gateway Monitor detects a scraping session drop or anti-bot block event,
+          it automatically fires a JSON webhook to your endpoint — rotating the session with{" "}
           <span className="font-semibold">zero human interaction</span>.
-          Slack and Discord alerts fire instantly on every new hot lead.
+          Slack and Discord alerts fire instantly on every new hot developer lead.
         </div>
       </motion.div>
 
       {/* ── Node Management Endpoint ─────────────────────────────────────── */}
       <SectionCard
         icon={<Globe className="w-4 h-4" />}
-        title="Node Management Endpoint"
-        subtitle="Receives automated IP replacement commands from the Alpha Monitor"
+        title="Scraping Gateway Endpoint"
+        subtitle="Receives automated session rotation commands from the ZenRows Gateway Monitor"
       >
         <div className="space-y-4">
           <TextInput
             label="Endpoint URL"
             value={endpoint}
             onChange={setEndpoint}
-            placeholder="https://api.proxies.sx/nodes/manage"
-            description="Full HTTPS URL — the Alpha Monitor will POST webhook payloads here."
+            placeholder="https://api.zenrows.com/v1/gateway/manage"
+            description="Full HTTPS URL — the ZenRows Gateway Monitor will POST webhook payloads here."
             type="url"
           />
 
           <div className="p-3 rounded-xl dark:bg-zinc-800/40 bg-zinc-50 border dark:border-zinc-700/40 border-zinc-200">
             <div className="text-[10px] uppercase tracking-wider dark:text-zinc-500 text-zinc-400 mb-2 font-semibold">Sample Payload</div>
             <pre className="text-[11px] dark:text-zinc-400 text-zinc-600 font-mono leading-relaxed overflow-x-auto">{`{
-  "event": "ip_drop",
+  "event": "gateway_error",
   "ip": "192.168.1.42",
-  "reason": "Quarantined by alpha-monitor",
-  "action": "replace_ip",
+  "reason": "Anti-bot block detected — session rotating",
+  "action": "replace_session",
   "timestamp": "2026-06-04T12:00:00Z",
-  "source": "proxies_sx_alpha_monitor"
+  "source": "zenrows_intel_engine"
 }`}</pre>
           </div>
         </div>
@@ -281,7 +281,7 @@ export default function Integrations() {
             label="API Key"
             value={apiKey}
             onChange={setApiKey}
-            placeholder={config?.hasApiKey ? "Leave blank to keep existing key" : "Paste your Proxies.sx API key"}
+            placeholder={config?.hasApiKey ? "Leave blank to keep existing key" : "Paste your ZenRows API key"}
             description="Sent as Bearer token in the Authorization header."
           />
           <SecretInput
@@ -309,18 +309,18 @@ export default function Integrations() {
       <SectionCard
         icon={<Zap className="w-4 h-4" />}
         title="Automation Rules"
-        subtitle="Control when the Alpha Monitor fires webhook commands automatically"
+        subtitle="Control when the ZenRows Gateway Monitor fires webhook commands automatically"
       >
         <div>
           <AutoToggle
-            label="Auto-Replace on IP Drop"
-            description="When a node goes offline, instantly POST a replace_ip command to your endpoint."
+            label="Auto-Rotate on Session Drop"
+            description="When a scraping session goes offline, instantly POST a replace_session command to your endpoint."
             checked={autoReplaceDrop}
             onChange={setAutoReplaceDrop}
           />
           <AutoToggle
-            label="Auto-Replace on IP Abuse"
-            description="When the monitor quarantines an IP, POST a quarantine command to lock it at the server level."
+            label="Auto-Quarantine on Anti-Bot Block"
+            description="When the monitor detects an anti-bot event, POST a quarantine command to lock the session at gateway level."
             checked={autoReplaceAbuse}
             onChange={setAutoReplaceAbuse}
           />
@@ -446,14 +446,14 @@ export default function Integrations() {
             hover:dark:bg-zinc-700 hover:bg-zinc-200 disabled:opacity-40 active:scale-95"
         >
           {testing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-          {testing ? "Testing…" : "Test Node Webhook"}
+          {testing ? "Testing…" : "Test Gateway Webhook"}
         </button>
 
         <button
           onClick={handleSave}
           disabled={saving}
           className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all
-            bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-40 active:scale-[0.99]"
+            bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-40 active:scale-[0.99]"
         >
           {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
           {saving ? "Saving…" : "Save All Settings"}

@@ -46,8 +46,8 @@ function buildTemplates(lead: Lead): Template[] {
       label: "Quick DM",
       icon: <MessageSquare className="w-3.5 h-3.5" />,
       body:
-        `Hey! Saw your post about "${snippet}". We solve exactly this at Proxies.sx — ${proxyType} with auto-rotation and ${antiBot} bypass built in.\n\n` +
-        `Happy to set you up with a free 500MB trial if you're still looking. What's your use case?`,
+        `Hey! Saw your post about "${snippet}". ZenRows solves exactly this — our Web Scraping API has ${antiBot} bypass built in, no setup needed.\n\n` +
+        `Happy to get you a free trial if you're still looking. What's your use case?`,
     },
     {
       type: "email",
@@ -55,14 +55,14 @@ function buildTemplates(lead: Lead): Template[] {
       icon: <Mail className="w-3.5 h-3.5" />,
       subject: `Re: ${snippet}`,
       body:
-        `Hi,\n\nFound your post on ${platform} about ${antiBot} issues.\n\nAt Proxies.sx we offer:\n` +
-        `• 40M+ residential IPs across 195 countries\n` +
-        `• Auto-rotation with sticky session support\n` +
-        `• ${antiBot} bypass — works out of the box\n` +
-        `• Pay-per-GB, no monthly seats\n\n` +
-        `Most teams fix their blocking issues within 24 hours of switching.\n\n` +
-        `Want a 500MB free trial? 2-minute setup.\n\n` +
-        `— [Your Name], Proxies.sx\nhttps://proxies.sx`,
+        `Hi,\n\nFound your post on ${platform} about ${antiBot} issues.\n\nZenRows is a Web Scraping API that handles this for you:\n` +
+        `• ${antiBot} bypass — preconfigured, works out of the box\n` +
+        `• Real browser rendering with anti-fingerprint headers\n` +
+        `• Rotating residential IPs + stealth mode in one API call\n` +
+        `• Pay-per-request, no monthly seats or minimums\n\n` +
+        `Most devs unblock their scraping within 24 hours of switching.\n\n` +
+        `Free trial, no card needed.\n\n` +
+        `— [Your Name], ZenRows\nhttps://zenrows.com`,
     },
     {
       type: "reply",
@@ -74,7 +74,7 @@ function buildTemplates(lead: Lead): Template[] {
         `1. ${proxyType.charAt(0).toUpperCase() + proxyType.slice(1)} (not datacenter)\n` +
         `2. Match browser fingerprints — JA3/HTTP2 headers matter\n` +
         `3. Respect request timing — randomize intervals\n\n` +
-        `We handle all of this at Proxies.sx if you want to skip the setup. What site/platform is giving you trouble specifically?`,
+        `ZenRows handles all of this at the API layer if you want to skip the setup. What site/platform is giving you trouble specifically?`,
     },
   ];
 }
@@ -151,7 +151,7 @@ export default function OutreachModal({ lead, onClose }: Props) {
                 dark:bg-[#0e0f1a] bg-white
                 border dark:border-zinc-800/80 border-zinc-200"
               style={{
-                boxShadow: "0 25px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(59,130,246,0.08)",
+                boxShadow: "0 25px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,255,180,0.07)",
               }}
               onClick={(e) => e.stopPropagation()}
             >
@@ -206,7 +206,7 @@ export default function OutreachModal({ lead, onClose }: Props) {
                       onClick={() => setActiveTab(i)}
                       className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all
                         ${activeTab === i
-                          ? "dark:bg-blue-500/20 bg-blue-50 text-blue-500 dark:text-blue-400 border dark:border-blue-500/30 border-blue-200"
+                          ? "dark:bg-emerald-500/20 bg-emerald-50 text-emerald-500 dark:text-emerald-400 border dark:border-emerald-500/30 border-emerald-200"
                           : "dark:text-zinc-500 text-zinc-500 hover:dark:text-zinc-300 hover:text-zinc-700 dark:hover:bg-zinc-800 hover:bg-zinc-50 border border-transparent"
                         }`}
                     >
@@ -249,7 +249,7 @@ export default function OutreachModal({ lead, onClose }: Props) {
                       target="_blank"
                       rel="noreferrer"
                       className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-semibold
-                        bg-blue-500 text-white hover:bg-blue-600 transition-colors active:scale-[0.99]"
+                        bg-emerald-500 text-white hover:bg-emerald-600 transition-colors active:scale-[0.99]"
                     >
                       Open Original Post <ExternalLink className="w-4 h-4" />
                     </a>

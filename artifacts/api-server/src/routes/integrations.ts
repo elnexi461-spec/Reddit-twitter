@@ -79,9 +79,9 @@ router.post("/integrations/test", async (_req, res) => {
   const result = await fireWebhook({
     event: "test",
     action: "test",
-    reason: "Test connection from Proxies.sx Alpha Monitor Dashboard",
+    reason: "Test connection from ZenRows Intel Engine Dashboard",
     timestamp: new Date().toISOString(),
-    source: "proxies_sx_alpha_monitor",
+    source: "zenrows_intel_engine",
   });
   res.status(result.ok ? 200 : 502).json(result);
 });
@@ -96,8 +96,8 @@ router.post("/integrations/test-slack", async (_req, res) => {
   try {
     await notifySlack({
       id: "test",
-      title: "Test alert from Proxies.sx Alpha Monitor — your Slack integration is live!",
-      url: "https://proxies.sx",
+      title: "Test alert from ZenRows Intel Engine — your Slack integration is live!",
+      url: "https://zenrows.com",
       source: "reddit",
       keyword: "test",
       score: 99,
@@ -119,8 +119,8 @@ router.post("/integrations/test-discord", async (_req, res) => {
   try {
     await notifyDiscord({
       id: "test",
-      title: "Test alert from Proxies.sx Alpha Monitor — your Discord integration is live!",
-      url: "https://proxies.sx",
+      title: "Test alert from ZenRows Intel Engine — your Discord integration is live!",
+      url: "https://zenrows.com",
       source: "HN",
       keyword: "test",
       score: 99,

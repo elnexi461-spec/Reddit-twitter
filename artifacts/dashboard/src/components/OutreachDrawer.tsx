@@ -43,8 +43,8 @@ function buildTemplates(lead: Lead): Template[] {
       label: "Quick DM",
       icon: <MessageSquare className="w-3.5 h-3.5" />,
       body:
-        `Hey! Saw your post about "${snippet}". We solve exactly this at Proxies.sx — ${proxyType} with auto-rotation and ${antiBot} bypass built in.\n\n` +
-        `Happy to set you up with a free 500MB trial if you're still looking. What's your use case?`,
+        `Hey! Saw your post about "${snippet}". ZenRows solves exactly this — our Web Scraping API has ${antiBot} bypass built in, no setup needed.\n\n` +
+        `Happy to get you a free trial if you're still looking. What's your use case?`,
     },
     {
       type: "email",
@@ -52,14 +52,14 @@ function buildTemplates(lead: Lead): Template[] {
       icon: <Mail className="w-3.5 h-3.5" />,
       subject: `Re: ${snippet}`,
       body:
-        `Hi,\n\nFound your post on ${platform} about ${antiBot} issues.\n\nAt Proxies.sx we offer:\n` +
-        `• 40M+ residential IPs across 195 countries\n` +
-        `• Auto-rotation with sticky session support\n` +
-        `• ${antiBot} bypass — works out of the box\n` +
-        `• Pay-per-GB, no monthly seats\n\n` +
-        `Most teams fix their blocking issues within 24 hours of switching.\n\n` +
-        `Want a 500MB free trial? 2-minute setup.\n\n` +
-        `— [Your Name], Proxies.sx\nhttps://proxies.sx`,
+        `Hi,\n\nFound your post on ${platform} about ${antiBot} issues.\n\nZenRows is a Web Scraping API that handles this for you:\n` +
+        `• ${antiBot} bypass — preconfigured, works out of the box\n` +
+        `• Real browser rendering with anti-fingerprint headers\n` +
+        `• Rotating residential IPs + stealth mode in one API call\n` +
+        `• Pay-per-request, no monthly seats or minimums\n\n` +
+        `Most devs unblock their scraping within 24 hours of switching.\n\n` +
+        `Free trial, no card needed.\n\n` +
+        `— [Your Name], ZenRows\nhttps://zenrows.com`,
     },
     {
       type: "reply",
@@ -71,7 +71,7 @@ function buildTemplates(lead: Lead): Template[] {
         `1. ${proxyType.charAt(0).toUpperCase() + proxyType.slice(1)} (not datacenter)\n` +
         `2. Match browser fingerprints — JA3/HTTP2 headers matter\n` +
         `3. Respect request timing — randomize intervals\n\n` +
-        `We handle all of this at Proxies.sx if you want to skip the setup. What site/platform is giving you trouble specifically?`,
+        `ZenRows handles all of this at the API layer if you want to skip the setup. What site/platform is giving you trouble specifically?`,
     },
   ];
 }
