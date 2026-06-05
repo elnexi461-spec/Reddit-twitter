@@ -7,6 +7,7 @@ import { loadCompetitorLeads } from "./store/competitor-leads.js";
 import { start as startReddit } from "./workers/reddit.js";
 import { startTwitter } from "./workers/twitter.js";
 import { startCompetitorWorker } from "./workers/competitor.js";
+import { startDailySeed } from "./workers/daily-seed.js";
 
 const rawPort = process.env["PORT"];
 
@@ -37,4 +38,5 @@ app.listen(port, (err) => {
   startReddit();
   startTwitter();
   startCompetitorWorker();
+  startDailySeed();
 });

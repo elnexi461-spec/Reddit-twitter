@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, createContext, useContext, useRef } f
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Activity, Shield, Bell, Settings as SettingsIcon,
-  Sun, Moon, Flame, Download, Webhook, Crosshair,
+  Sun, Moon, Flame, Download, Webhook, Crosshair, Gauge,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -13,6 +13,7 @@ import Notifications from "@/components/tabs/Notifications";
 import SettingsTab from "@/components/tabs/Settings";
 import IntegrationsTab from "@/components/tabs/Integrations";
 import CompetitorFeed from "@/components/tabs/CompetitorFeed";
+import TelemetryVisualizer from "@/components/tabs/TelemetryVisualizer";
 import OutreachPage from "@/components/OutreachPage";
 import OnboardingTour, { isNewUser } from "@/components/OnboardingTour";
 import DemoBanner from "@/components/DemoBanner";
@@ -26,14 +27,14 @@ const ThemeContext = createContext<{ theme: Theme; toggle: () => void }>({ theme
 export const useTheme = () => useContext(ThemeContext);
 
 // ─── Tab config ───────────────────────────────────────────────────────────────
-type Tab = "feed" | "intercept" | "sentinel" | "notifications" | "settings" | "integrations";
+type Tab = "feed" | "intercept" | "telemetry" | "sentinel" | "notifications" | "settings" | "integrations";
 
 const LS_TAB_KEY = "zenrows_intel_last_tab";
 
 function getSavedTab(): Tab {
   try {
     const v = localStorage.getItem(LS_TAB_KEY) as Tab | null;
-    if (v && ["feed","intercept","sentinel","notifications","settings","integrations"].includes(v)) return v;
+    if (v && ["feed","intercept","telemetry","sentinel","notifications","settings","integrations"].includes(v)) return v;
   } catch {}
   return "feed";
 }
@@ -41,7 +42,8 @@ function getSavedTab(): Tab {
 const TABS: { id: Tab; label: string; mobileLabel: string; icon: React.ReactNode }[] = [
   { id: "feed",          label: "Live Feed",        mobileLabel: "Feed",     icon: <Activity     className="w-5 h-5" /> },
   { id: "intercept",     label: "Competitor Intercept", mobileLabel: "Intercept", icon: <Crosshair className="w-5 h-5" /> },
-  { id: "sentinel",      label: "Gateway Monitor",  mobileLabel: "Monitor",  icon: <Shield       className="w-5 h-5" /> },
+  { id: "telemetry",     label: "Client Telemetry",    mobileLabel: "Telemetry", icon: <Gauge     className="w-5 h-5" /> },
+  { id: "sentinel",      label: "Gateway Monitor",     mobileLabel: "Monitor",   icon: <Shield    className="w-5 h-5" /> },
   { id: "notifications", label: "Analytics",        mobileLabel: "Stats",    icon: <Bell         className="w-5 h-5" /> },
   { id: "integrations",  label: "Integrations",     mobileLabel: "Webhooks", icon: <Webhook      className="w-5 h-5" /> },
   { id: "settings",      label: "Settings",         mobileLabel: "Settings", icon: <SettingsIcon className="w-5 h-5" /> },
@@ -52,6 +54,7 @@ const MOBILE_TABS: Tab[] = ["feed", "intercept", "sentinel", "notifications"];
 const TAB_TITLES: Record<Tab, string> = {
   feed:          "Live Intelligence Feed",
   intercept:     "Competitor Intercept Feed",
+  telemetry:     "Client Telemetry Visualizer",
   sentinel:      "Gateway Monitor",
   notifications: "Analytics & Activity",
   settings:      "Engine Settings",
@@ -61,6 +64,7 @@ const TAB_TITLES: Record<Tab, string> = {
 const TAB_SUBTITLES: Record<Tab, string> = {
   feed:          "Real-time developer pain signals · 2026 only · sorted by urgency",
   intercept:     "Developers frustrated with Bright Data, Oxylabs, ScraperAPI, Crawlbase, Webshare · churn-risk scoring · ready-to-send outreach",
+  telemetry:     "Enterprise concurrency tracking · credit spend multipliers · 429 pre-emption circuit · live domain headroom",
   sentinel:      "Live ZenRows API gateway telemetry · anti-bot circuit breaker armed · updates every 2s",
   notifications: "Lead analytics, pipeline funnel, and activity log",
   settings:      "Keyword management, API status, engine configuration",
@@ -533,6 +537,9 @@ export default function Dashboard() {
                 )}
                 {activeTab === "intercept" && (
                   <CompetitorFeed />
+                )}
+                {activeTab === "telemetry" && (
+                  <TelemetryVisualizer />
                 )}
                 {activeTab === "sentinel" && (
                   <>

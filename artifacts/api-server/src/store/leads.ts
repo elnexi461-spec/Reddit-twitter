@@ -194,6 +194,10 @@ export function setWorkerStatus(worker: keyof WorkerState, status: WorkerStatus)
   workerStatus[worker] = status;
 }
 
+export function getAllLeads() {
+  return leads.slice();
+}
+
 export function getSnapshot() {
   return {
     uptime: Math.floor((Date.now() - startedAt) / 1000),

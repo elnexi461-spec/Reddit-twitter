@@ -4,3 +4,5 @@
 - [Terminology conventions](terminology.md) — all user-facing "Sentinel/Kill Switch/Self-Heal" phrases replaced with developer terms; internal type names kept as-is
 - [Slack/Discord notification pattern](slack-discord-notifs.md) — notifySlack/notifyDiscord in integrations.ts fire on hot/warm lead push; as const needed for union types in Notifications.tsx
 - [Competitor Intercept architecture](competitor-intercept.md) — separate store/worker/routes for competitor leads; qualifyCompetitorPost returns `competitor` field but store expects `competitorMention` — must map explicitly when calling pushCompetitorLead
+- [Daily seed worker](daily-seed.md) — guarantees 5+ leads & 5+ competitor intercepts per day; uses date-stamped IDs to avoid re-seeding; runs at startup + every 60min + midnight boundary
+- [Telemetry tab](telemetry-tab.md) — Client Telemetry Visualizer is pure frontend simulation in useTelemetry.ts; tab id = "telemetry"; kind field in SentinelEvent arrays needs `as const` to satisfy union type

@@ -202,6 +202,10 @@ export function addCompetitorNote(id: string, text: string): CompetitorLead | nu
   return { ...lead };
 }
 
+export function getAllCompetitorLeads() {
+  return leads.slice();
+}
+
 export function getCompetitorSnapshot() {
   const now = Date.now();
   const oneHour = 60 * 60 * 1000;
