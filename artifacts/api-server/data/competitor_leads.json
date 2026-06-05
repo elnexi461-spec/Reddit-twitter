@@ -86,6 +86,23 @@
       "notes": []
     },
     {
+      "id": "reddit_1t1l63b",
+      "source": "reddit",
+      "keyword": "scraperapi",
+      "title": "Building a vector db from a cnc documentation site: is my rate limiting safe?",
+      "url": "https://reddit.com/r/dataengineering/comments/1t1l63b/building_a_vector_db_from_a_cnc_documentation/",
+      "timestamp": "2026-05-02T09:29:01.000Z",
+      "competitorMention": "ScraperAPI",
+      "frustrationScore": 24,
+      "sentimentLabel": "migration_potential",
+      "priceComplaint": false,
+      "score": 52,
+      "tier": "warm",
+      "claimed": false,
+      "pipelineStatus": "unclaimed",
+      "notes": []
+    },
+    {
       "id": "reddit_1syze3p",
       "source": "reddit",
       "keyword": "scraperapi blocked",
