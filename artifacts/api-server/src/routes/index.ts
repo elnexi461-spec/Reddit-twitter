@@ -7,6 +7,7 @@ import leadsRouter from "./leads.js";
 import statsRouter from "./stats.js";
 import integrationsRouter from "./integrations.js";
 import competitorLeadsRouter from "./competitor-leads.js";
+import liveStreamRouter from "./live-stream.js";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(leadsRouter);
 router.use(statsRouter);
 router.use(integrationsRouter);
 router.use(competitorLeadsRouter);
+router.use(liveStreamRouter);
 
 export default router;

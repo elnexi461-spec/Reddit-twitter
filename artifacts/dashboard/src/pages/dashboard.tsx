@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback, createContext, useContext, useRef } from "react";
+import { useState, useEffect, useCallback, createContext, useContext } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Activity, Shield, Bell, Settings as SettingsIcon,
   Sun, Moon, Flame, Download, Webhook, Crosshair, Gauge,
+  Package, Briefcase, Server,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -14,11 +15,15 @@ import SettingsTab from "@/components/tabs/Settings";
 import IntegrationsTab from "@/components/tabs/Integrations";
 import CompetitorFeed from "@/components/tabs/CompetitorFeed";
 import TelemetryVisualizer from "@/components/tabs/TelemetryVisualizer";
+import PackageTracker from "@/components/tabs/PackageTracker";
+import JobBoardAggregator from "@/components/tabs/JobBoardAggregator";
+import CloudInfraAnalyzer from "@/components/tabs/CloudInfraAnalyzer";
 import OutreachPage from "@/components/OutreachPage";
 import OnboardingTour, { isNewUser } from "@/components/OnboardingTour";
 import DemoBanner from "@/components/DemoBanner";
 import { useLeads } from "@/hooks/useLeads";
 import { useHotAlert } from "@/hooks/useHotAlert";
+import { useLiveStream } from "@/hooks/useLiveStream";
 import type { Lead } from "@/hooks/useLeads";
 
 // ─── Theme Context ────────────────────────────────────────────────────────────
@@ -27,33 +32,41 @@ const ThemeContext = createContext<{ theme: Theme; toggle: () => void }>({ theme
 export const useTheme = () => useContext(ThemeContext);
 
 // ─── Tab config ───────────────────────────────────────────────────────────────
-type Tab = "feed" | "intercept" | "telemetry" | "sentinel" | "notifications" | "settings" | "integrations";
+type Tab = "feed" | "intercept" | "packages" | "jobs" | "infra" | "telemetry" | "sentinel" | "notifications" | "settings" | "integrations";
+
+const ALL_TAB_IDS: Tab[] = ["feed","intercept","packages","jobs","infra","telemetry","sentinel","notifications","settings","integrations"];
 
 const LS_TAB_KEY = "zenrows_intel_last_tab";
 
 function getSavedTab(): Tab {
   try {
     const v = localStorage.getItem(LS_TAB_KEY) as Tab | null;
-    if (v && ["feed","intercept","telemetry","sentinel","notifications","settings","integrations"].includes(v)) return v;
+    if (v && (ALL_TAB_IDS as string[]).includes(v)) return v;
   } catch {}
   return "feed";
 }
 
 const TABS: { id: Tab; label: string; mobileLabel: string; icon: React.ReactNode }[] = [
-  { id: "feed",          label: "Live Feed",    mobileLabel: "Feed",     icon: <Activity     className="w-5 h-5" /> },
-  { id: "intercept",     label: "Intercept",   mobileLabel: "Intercept", icon: <Crosshair   className="w-5 h-5" /> },
-  { id: "telemetry",     label: "Telemetry",   mobileLabel: "Telemetry", icon: <Gauge        className="w-5 h-5" /> },
-  { id: "sentinel",      label: "Monitor",     mobileLabel: "Monitor",   icon: <Shield       className="w-5 h-5" /> },
-  { id: "notifications", label: "Analytics",   mobileLabel: "Stats",    icon: <Bell          className="w-5 h-5" /> },
-  { id: "integrations",  label: "Webhooks",    mobileLabel: "Webhooks", icon: <Webhook       className="w-5 h-5" /> },
-  { id: "settings",      label: "Settings",    mobileLabel: "Settings", icon: <SettingsIcon  className="w-5 h-5" /> },
+  { id: "feed",          label: "Real Leads",   mobileLabel: "Leads",    icon: <Activity     className="w-5 h-5" /> },
+  { id: "intercept",     label: "Intercept",    mobileLabel: "Intercept", icon: <Crosshair   className="w-5 h-5" /> },
+  { id: "packages",      label: "Packages",     mobileLabel: "Pkgs",     icon: <Package      className="w-5 h-5" /> },
+  { id: "jobs",          label: "Job Board",    mobileLabel: "Jobs",     icon: <Briefcase    className="w-5 h-5" /> },
+  { id: "infra",         label: "IP Logs",      mobileLabel: "Infra",    icon: <Server       className="w-5 h-5" /> },
+  { id: "telemetry",     label: "Telemetry",    mobileLabel: "Telemetry", icon: <Gauge       className="w-5 h-5" /> },
+  { id: "sentinel",      label: "Monitor",      mobileLabel: "Monitor",  icon: <Shield       className="w-5 h-5" /> },
+  { id: "notifications", label: "Analytics",    mobileLabel: "Stats",    icon: <Bell         className="w-5 h-5" /> },
+  { id: "integrations",  label: "Webhooks",     mobileLabel: "Webhooks", icon: <Webhook      className="w-5 h-5" /> },
+  { id: "settings",      label: "Settings",     mobileLabel: "Settings", icon: <SettingsIcon className="w-5 h-5" /> },
 ];
 
-const MOBILE_TABS: Tab[] = ["feed", "intercept", "sentinel", "integrations"];
+const MOBILE_TABS: Tab[] = ["feed", "intercept", "packages", "integrations"];
 
 const TAB_TITLES: Record<Tab, string> = {
-  feed:          "Live Intelligence Feed",
+  feed:          "Real Leads",
   intercept:     "Competitor Intercept Feed",
+  packages:      "Open-Source Package Registry Tracker",
+  jobs:          "Corporate Job Board Aggregator",
+  infra:         "Cloud Infrastructure & Reverse DNS Analyzer",
   telemetry:     "Client Telemetry Visualizer",
   sentinel:      "Gateway Monitor",
   notifications: "Analytics & Activity",
@@ -64,6 +77,9 @@ const TAB_TITLES: Record<Tab, string> = {
 const TAB_SUBTITLES: Record<Tab, string> = {
   feed:          "Real-time developer pain signals · 2026 only · sorted by urgency",
   intercept:     "Developers frustrated with Bright Data, Oxylabs, ScraperAPI, Crawlbase, Webshare · churn-risk scoring · ready-to-send outreach",
+  packages:      "npm · PyPI · GitHub stars/issues · download velocity · early-stage scraping project detection",
+  jobs:          "LinkedIn · Indeed · Glassdoor · Lever · Greenhouse · companies hiring web scrapers & automation architects",
+  infra:         "AWS · DigitalOcean · Hetzner clusters · reverse DNS footprint · high-bandwidth automation pipelines",
   telemetry:     "Enterprise concurrency tracking · credit spend multipliers · 429 pre-emption circuit · live domain headroom",
   sentinel:      "Live ZenRows API gateway telemetry · anti-bot circuit breaker armed · updates every 2s",
   notifications: "Lead analytics, pipeline funnel, and activity log",
@@ -506,6 +522,9 @@ export default function Dashboard() {
   const leads = data?.leads ?? [];
   const hotCount = leads.filter((l) => l.tier === "hot").length;
 
+  // SSE live stream — only active when mode === "live"
+  const liveStream = useLiveStream(mode === "live");
+
   // Apply theme to <html>
   useEffect(() => {
     const html = document.documentElement;
@@ -730,14 +749,27 @@ export default function Dashboard() {
                 style={{ willChange: "opacity, transform" }}
               >
                 {activeTab === "feed" && (
-                  <HomeFeed
-                    onReachOut={(lead) => setOutreachLead(lead)}
-                    highlightedLeadId={highlightedLeadId}
-                    onClearHighlight={() => setHighlightedLeadId(null)}
-                  />
+                  mode === "live"
+                    ? <LiveEmptyState title="Real Leads Pipeline" onGoToIntegrations={() => handleTabChange("integrations")} />
+                    : <HomeFeed
+                        onReachOut={(lead) => setOutreachLead(lead)}
+                        highlightedLeadId={highlightedLeadId}
+                        onClearHighlight={() => setHighlightedLeadId(null)}
+                      />
                 )}
                 {activeTab === "intercept" && (
-                  <CompetitorFeed />
+                  mode === "live"
+                    ? <LiveEmptyState title="Competitor Intercept" onGoToIntegrations={() => handleTabChange("integrations")} />
+                    : <CompetitorFeed />
+                )}
+                {activeTab === "packages" && (
+                  <PackageTracker mode={mode} livePackages={liveStream.packages} />
+                )}
+                {activeTab === "jobs" && (
+                  <JobBoardAggregator mode={mode} liveJobs={liveStream.jobs} />
+                )}
+                {activeTab === "infra" && (
+                  <CloudInfraAnalyzer mode={mode} liveInfra={liveStream.infra} />
                 )}
                 {activeTab === "telemetry" && (
                   mode === "live"
