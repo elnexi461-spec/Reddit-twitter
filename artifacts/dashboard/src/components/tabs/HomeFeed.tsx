@@ -243,15 +243,26 @@ function LeadCard({
 
         {/* Action buttons row */}
         <div className="flex items-center gap-2 flex-wrap">
-          <a
-            href={lead.url} target="_blank" rel="noreferrer"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
-              dark:bg-blue-500/15 bg-blue-50 dark:text-blue-400 text-blue-600
-              dark:border dark:border-blue-500/25 border border-blue-200
-              hover:dark:bg-blue-500/25 hover:bg-blue-100 active:scale-95"
-          >
-            Target Client <ExternalLink className="w-3 h-3" />
-          </a>
+          {lead.id.startsWith("seed_") ? (
+            <span
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
+                dark:bg-zinc-800/50 bg-zinc-100/80 dark:text-zinc-600 text-zinc-400
+                dark:border dark:border-zinc-700/50 border border-zinc-200 cursor-default select-none"
+              title="This is a seeded demo lead — no external post URL"
+            >
+              <Unlock className="w-3 h-3" /> Seed Lead
+            </span>
+          ) : (
+            <a
+              href={lead.url} target="_blank" rel="noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
+                dark:bg-blue-500/15 bg-blue-50 dark:text-blue-400 text-blue-600
+                dark:border dark:border-blue-500/25 border border-blue-200
+                hover:dark:bg-blue-500/25 hover:bg-blue-100 active:scale-95"
+            >
+              Target Client <ExternalLink className="w-3 h-3" />
+            </a>
+          )}
 
           {/* Claim / Unclaim */}
           {lead.claimed ? (

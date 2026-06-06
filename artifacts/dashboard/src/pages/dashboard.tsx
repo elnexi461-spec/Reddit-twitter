@@ -40,16 +40,16 @@ function getSavedTab(): Tab {
 }
 
 const TABS: { id: Tab; label: string; mobileLabel: string; icon: React.ReactNode }[] = [
-  { id: "feed",          label: "Live Feed",        mobileLabel: "Feed",     icon: <Activity     className="w-5 h-5" /> },
-  { id: "intercept",     label: "Competitor Intercept", mobileLabel: "Intercept", icon: <Crosshair className="w-5 h-5" /> },
-  { id: "telemetry",     label: "Client Telemetry",    mobileLabel: "Telemetry", icon: <Gauge     className="w-5 h-5" /> },
-  { id: "sentinel",      label: "Gateway Monitor",     mobileLabel: "Monitor",   icon: <Shield    className="w-5 h-5" /> },
-  { id: "notifications", label: "Analytics",        mobileLabel: "Stats",    icon: <Bell         className="w-5 h-5" /> },
-  { id: "integrations",  label: "Integrations",     mobileLabel: "Webhooks", icon: <Webhook      className="w-5 h-5" /> },
-  { id: "settings",      label: "Settings",         mobileLabel: "Settings", icon: <SettingsIcon className="w-5 h-5" /> },
+  { id: "feed",          label: "Live Feed",    mobileLabel: "Feed",     icon: <Activity     className="w-5 h-5" /> },
+  { id: "intercept",     label: "Intercept",   mobileLabel: "Intercept", icon: <Crosshair   className="w-5 h-5" /> },
+  { id: "telemetry",     label: "Telemetry",   mobileLabel: "Telemetry", icon: <Gauge        className="w-5 h-5" /> },
+  { id: "sentinel",      label: "Monitor",     mobileLabel: "Monitor",   icon: <Shield       className="w-5 h-5" /> },
+  { id: "notifications", label: "Analytics",   mobileLabel: "Stats",    icon: <Bell          className="w-5 h-5" /> },
+  { id: "integrations",  label: "Webhooks",    mobileLabel: "Webhooks", icon: <Webhook       className="w-5 h-5" /> },
+  { id: "settings",      label: "Settings",    mobileLabel: "Settings", icon: <SettingsIcon  className="w-5 h-5" /> },
 ];
 
-const MOBILE_TABS: Tab[] = ["feed", "intercept", "sentinel", "notifications"];
+const MOBILE_TABS: Tab[] = ["feed", "intercept", "sentinel", "integrations"];
 
 const TAB_TITLES: Record<Tab, string> = {
   feed:          "Live Intelligence Feed",
@@ -77,7 +77,7 @@ const tabVariants = {
   exit:   { opacity: 0, y: -6 },
 };
 
-// ─── Logo video (used in nav) ─────────────────────────────────────────────────
+// ─── ZenRows logo (nav) ───────────────────────────────────────────────────────
 function NavLogo({ size = "md" }: { size?: "sm" | "md" }) {
   const dim = size === "sm" ? "w-6 h-6" : "w-7 h-7";
   return (
@@ -88,13 +88,11 @@ function NavLogo({ size = "md" }: { size?: "sm" | "md" }) {
         boxShadow: "0 0 8px rgba(0,255,179,0.12)",
       }}
     >
-      <video
-        src={`${import.meta.env.BASE_URL}logo.mp4`}
-        autoPlay
-        loop
-        muted
-        playsInline
+      <img
+        src={`${import.meta.env.BASE_URL}zenrows-logo.jpg`}
+        alt="ZenRows"
         className="w-full h-full object-cover"
+        style={{ objectPosition: "8% center" }}
       />
     </div>
   );
@@ -164,12 +162,45 @@ function HotLeadToast({ lead, count, onView, onDismiss }: {
   );
 }
 
+// ─── Live Empty State (shown when Demo mode is OFF for simulated tabs) ────────
+function LiveEmptyState({ title, onGoToIntegrations }: { title: string; onGoToIntegrations: () => void }) {
+  return (
+    <div className="flex flex-col items-center gap-4 py-24 text-center">
+      <div
+        className="w-14 h-14 rounded-2xl flex items-center justify-center"
+        style={{ background: "rgba(0,255,179,0.07)", border: "1px solid rgba(0,255,179,0.15)" }}
+      >
+        <Activity className="w-6 h-6" style={{ color: "#00ffb3" }} />
+      </div>
+      <div>
+        <div className="text-base font-bold dark:text-zinc-200 text-zinc-800">Live Mode Active</div>
+        <div className="text-sm dark:text-zinc-500 text-zinc-500 mt-1.5 max-w-xs mx-auto leading-relaxed">
+          {title} receives real data from your connected sources.
+          Configure endpoints in <button onClick={onGoToIntegrations} className="underline underline-offset-2 hover:text-zinc-300 transition-colors">Integrations</button> to start streaming.
+        </div>
+      </div>
+      <button
+        onClick={onGoToIntegrations}
+        className="mt-1 px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
+        style={{
+          color: "#00ffb3",
+          background: "rgba(0,255,179,0.08)",
+          border: "1px solid rgba(0,255,179,0.2)",
+        }}
+      >
+        Open Integrations →
+      </button>
+    </div>
+  );
+}
+
 // ─── Desktop top nav ──────────────────────────────────────────────────────────
 function TopNav({
-  activeTab, onTabChange, theme, onToggleTheme, hotCount,
+  activeTab, onTabChange, theme, onToggleTheme, hotCount, mode, onToggleMode,
 }: {
   activeTab: Tab; onTabChange: (t: Tab) => void;
   theme: Theme; onToggleTheme: () => void; hotCount: number;
+  mode: "demo" | "live"; onToggleMode: () => void;
 }) {
   return (
     <header className="fixed top-0 left-0 right-0 z-30 h-14 flex items-center px-4 gap-3
@@ -223,17 +254,36 @@ function TopNav({
 
       {/* Controls */}
       <div className="flex items-center gap-2 shrink-0">
+        {/* Demo / Live mode toggle */}
+        <button
+          onClick={onToggleMode}
+          className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95"
+          style={mode === "demo" ? {
+            background: "rgba(245,158,11,0.12)",
+            border: "1px solid rgba(245,158,11,0.25)",
+            color: "#f59e0b",
+          } : {
+            background: "rgba(0,255,179,0.10)",
+            border: "1px solid rgba(0,255,179,0.25)",
+            color: "#00ffb3",
+          }}
+          title={mode === "demo" ? "Switch to Live mode (hide simulated data)" : "Switch to Demo mode (show simulated data)"}
+        >
+          <span className={`w-1.5 h-1.5 rounded-full ${mode === "demo" ? "bg-amber-400" : "bg-emerald-400"} animate-pulse`} />
+          {mode === "demo" ? "DEMO" : "LIVE"}
+        </button>
+
         <a
           href="/api/activity/export/csv"
           download
-          className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium
+          className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium
             dark:text-zinc-400 text-zinc-500 dark:bg-zinc-900 bg-zinc-50
             dark:border dark:border-zinc-800 border border-zinc-200
             hover:dark:bg-zinc-800 hover:bg-zinc-100 transition-colors"
           onClick={() => toast.success("Exporting leads as CSV…")}
         >
           <Download className="w-3.5 h-3.5" />
-          <span className="hidden lg:inline">Export CSV</span>
+          Export
         </a>
         <button
           onClick={onToggleTheme}
@@ -334,6 +384,15 @@ function HotFlashOverlay({ active }: { active: boolean }) {
 }
 
 // ─── Root Dashboard ───────────────────────────────────────────────────────────
+const LS_MODE_KEY = "zenrows_intel_mode";
+function getSavedMode(): "demo" | "live" {
+  try {
+    const v = localStorage.getItem(LS_MODE_KEY);
+    if (v === "live") return "live";
+  } catch {}
+  return "demo";
+}
+
 export default function Dashboard() {
   const [theme, setTheme] = useState<Theme>("dark");
   const [showSplash, setShowSplash] = useState(true);
@@ -342,6 +401,7 @@ export default function Dashboard() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [outreachLead, setOutreachLead] = useState<Lead | null>(null);
   const [highlightedLeadId, setHighlightedLeadId] = useState<string | null>(null);
+  const [mode, setMode] = useState<"demo" | "live">(getSavedMode);
 
   const { data } = useLeads();
   const leads = data?.leads ?? [];
@@ -368,6 +428,11 @@ export default function Dashboard() {
 
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
   const toggleSound = () => setSoundEnabled((s) => !s);
+  const toggleMode = () => setMode((m) => {
+    const next = m === "demo" ? "live" : "demo";
+    try { localStorage.setItem(LS_MODE_KEY, next); } catch {}
+    return next;
+  });
 
   const handleTabChange = useCallback((tab: Tab) => {
     setActiveTab(tab);
@@ -444,6 +509,7 @@ export default function Dashboard() {
           <TopNav
             activeTab={activeTab} onTabChange={handleTabChange}
             theme={theme} onToggleTheme={toggleTheme} hotCount={hotCount}
+            mode={mode} onToggleMode={toggleMode}
           />
         </div>
 
@@ -539,44 +605,32 @@ export default function Dashboard() {
                   <CompetitorFeed />
                 )}
                 {activeTab === "telemetry" && (
-                  <TelemetryVisualizer />
+                  mode === "live"
+                    ? <LiveEmptyState title="Client Telemetry" onGoToIntegrations={() => handleTabChange("integrations")} />
+                    : <TelemetryVisualizer />
                 )}
                 {activeTab === "sentinel" && (
-                  <>
-                    <DemoBanner
-                      pageName="sentinel"
-                      onNavigateToIntegrations={() => handleTabChange("integrations")}
-                    />
-                    <SentinelMonitor />
-                  </>
+                  mode === "live"
+                    ? <LiveEmptyState title="Gateway Monitor" onGoToIntegrations={() => handleTabChange("integrations")} />
+                    : <SentinelMonitor />
                 )}
                 {activeTab === "notifications" && (
-                  <>
-                    <DemoBanner
-                      pageName="notifications"
-                      onNavigateToIntegrations={() => handleTabChange("integrations")}
-                    />
-                    <Notifications />
-                  </>
+                  mode === "live"
+                    ? <LiveEmptyState title="Analytics" onGoToIntegrations={() => handleTabChange("integrations")} />
+                    : <Notifications />
                 )}
                 {activeTab === "integrations" && <IntegrationsTab />}
                 {activeTab === "settings" && (
-                  <>
-                    <DemoBanner
-                      pageName="settings"
-                      onNavigateToIntegrations={() => handleTabChange("integrations")}
-                    />
-                    <SettingsTab
-                      theme={theme}
-                      onToggleTheme={toggleTheme}
-                      soundEnabled={soundEnabled}
-                      onToggleSound={toggleSound}
-                      onReplayTour={() => {
-                        localStorage.removeItem("zenrows_intel_onboarded");
-                        setShowTour(true);
-                      }}
-                    />
-                  </>
+                  <SettingsTab
+                    theme={theme}
+                    onToggleTheme={toggleTheme}
+                    soundEnabled={soundEnabled}
+                    onToggleSound={toggleSound}
+                    onReplayTour={() => {
+                      localStorage.removeItem("zenrows_intel_onboarded");
+                      setShowTour(true);
+                    }}
+                  />
                 )}
               </motion.div>
             )}

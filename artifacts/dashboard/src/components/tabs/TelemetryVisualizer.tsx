@@ -105,10 +105,7 @@ function DomainBar({ row }: { row: DomainRow }) {
     : "#00ffb3";
 
   return (
-    <motion.div
-      layout
-      className="flex items-center gap-2.5 py-1.5"
-    >
+    <div className="flex items-center gap-2.5 py-1.5">
       <span className="text-[11px] font-mono dark:text-zinc-300 text-zinc-600 w-28 shrink-0 truncate">{row.domain}</span>
       <div className="flex-1 h-2 rounded-full dark:bg-zinc-800 bg-zinc-100 overflow-hidden">
         <motion.div
@@ -128,7 +125,7 @@ function DomainBar({ row }: { row: DomainRow }) {
       }`}>
         {row.throttled ? "COOLDOWN" : row.risk}
       </span>
-    </motion.div>
+    </div>
   );
 }
 
@@ -148,7 +145,6 @@ function LogRow({ ev, flash }: { ev: SentinelEvent; flash?: boolean }) {
   };
   return (
     <motion.div
-      layout
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.22 }}

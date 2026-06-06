@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Props {
@@ -13,9 +13,6 @@ const LOADING_STEPS = [
 ];
 
 export default function SplashScreen({ onDone }: Props) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const playCount = useRef(0);
-  const fallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [stepIdx, setStepIdx] = useState(0);
 
   useEffect(() => {
@@ -24,76 +21,55 @@ export default function SplashScreen({ onDone }: Props) {
   }, []);
 
   useEffect(() => {
-    fallbackRef.current = setTimeout(onDone, 6000);
-    return () => { if (fallbackRef.current) clearTimeout(fallbackRef.current); };
+    const t = setTimeout(onDone, 3200);
+    return () => clearTimeout(t);
   }, [onDone]);
-
-  const handleEnded = () => {
-    playCount.current += 1;
-    if (playCount.current < 2) {
-      videoRef.current?.play().catch(() => {});
-    } else {
-      if (fallbackRef.current) clearTimeout(fallbackRef.current);
-      onDone();
-    }
-  };
-
-  const handleError = () => {};
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{
-        background: "radial-gradient(ellipse at 50% 40%, #071a14 0%, #030a07 70%)",
-      }}
+      style={{ background: "radial-gradient(ellipse at 50% 40%, #071a14 0%, #030a07 70%)" }}
     >
       <div className="flex flex-col items-center gap-8 select-none">
 
-        {/* ── Logo video ── */}
-        <div className="relative flex items-center justify-center">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.55, ease: "easeOut" }}
-            className="relative w-32 h-32 rounded-full overflow-hidden"
+        {/* ── ZenRows logo ── */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.85, y: 8 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.55, ease: "easeOut" }}
+          className="relative"
+        >
+          <div
+            className="w-56 h-28 rounded-2xl overflow-hidden"
             style={{
-              boxShadow: "0 0 40px rgba(0,255,180,0.18), 0 0 0 1px rgba(0,255,180,0.12)",
+              boxShadow: "0 0 48px rgba(0,255,180,0.22), 0 0 0 1px rgba(0,255,180,0.15)",
             }}
           >
-            <video
-              ref={videoRef}
-              src={`${import.meta.env.BASE_URL}logo.mp4`}
-              autoPlay
-              muted
-              playsInline
+            <img
+              src={`${import.meta.env.BASE_URL}zenrows-logo.jpg`}
+              alt="ZenRows"
               className="w-full h-full object-cover"
-              onEnded={handleEnded}
-              onError={handleError}
             />
-          </motion.div>
-        </div>
+          </div>
+          {/* Glow pulse */}
+          <motion.div
+            className="absolute inset-0 rounded-2xl pointer-events-none"
+            animate={{ opacity: [0.4, 0.8, 0.4] }}
+            transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+            style={{ boxShadow: "0 0 32px rgba(0,255,180,0.18)" }}
+          />
+        </motion.div>
 
         {/* ── Brand text ── */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35, duration: 0.55 }}
-          className="text-center space-y-1.5"
+          transition={{ delay: 0.3, duration: 0.5 }}
+          className="text-center space-y-1"
         >
           <div
-            className="text-3xl font-black tracking-tight"
-            style={{
-              fontFamily: "Inter, sans-serif",
-              background: "linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-            }}
-          >
-            ZenRows<span style={{ color: "#00ffb3", WebkitTextFillColor: "#00ffb3" }}></span>
-          </div>
-          <div
             className="text-[11px] font-semibold tracking-[0.32em] uppercase"
-            style={{ color: "rgba(0,255,180,0.45)", fontFamily: "Inter, sans-serif" }}
+            style={{ color: "rgba(0,255,180,0.5)", fontFamily: "Inter, sans-serif" }}
           >
             Intel Engine
           </div>
@@ -103,11 +79,11 @@ export default function SplashScreen({ onDone }: Props) {
         <motion.div
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, duration: 0.4 }}
+          transition={{ delay: 0.5, duration: 0.4 }}
           className="flex flex-col items-center gap-3 w-64"
         >
           <div
-            className="w-full h-[3px] rounded-full overflow-hidden"
+            className="w-full h-[2px] rounded-full overflow-hidden"
             style={{ background: "rgba(0,255,180,0.08)" }}
           >
             <motion.div
@@ -118,7 +94,7 @@ export default function SplashScreen({ onDone }: Props) {
               }}
               initial={{ width: "0%", backgroundPosition: "0% 50%" }}
               animate={{ width: "100%", backgroundPosition: "200% 50%" }}
-              transition={{ delay: 0.7, duration: 4.5, ease: "easeInOut" }}
+              transition={{ delay: 0.6, duration: 2.4, ease: "easeInOut" }}
             />
           </div>
 
@@ -126,10 +102,10 @@ export default function SplashScreen({ onDone }: Props) {
             <AnimatePresence mode="wait" initial={false}>
               <motion.span
                 key={stepIdx}
-                initial={{ opacity: 0, y: 6 }}
+                initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.25 }}
+                exit={{ opacity: 0, y: -5 }}
+                transition={{ duration: 0.2 }}
                 className="text-[11px] font-medium tracking-widest"
                 style={{
                   color: "rgba(0,255,180,0.45)",
