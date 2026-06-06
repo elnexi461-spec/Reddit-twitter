@@ -8,6 +8,7 @@ import {
 import { toast } from "sonner";
 
 import SplashScreen from "@/components/SplashScreen";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import HomeFeed from "@/components/tabs/HomeFeed";
 import SentinelMonitor from "@/components/tabs/SentinelMonitor";
 import Notifications from "@/components/tabs/Notifications";
@@ -82,7 +83,7 @@ const TAB_SUBTITLES: Record<Tab, string> = {
   infra:         "AWS · DigitalOcean · Hetzner clusters · reverse DNS footprint · high-bandwidth automation pipelines",
   telemetry:     "Enterprise concurrency tracking · credit spend multipliers · 429 pre-emption circuit · live domain headroom",
   sentinel:      "Live ZenRows API gateway telemetry · anti-bot circuit breaker armed · updates every 2s",
-  notifications: "Lead analytics, pipeline funnel, and activity log",
+  notifications: "Lead analytics, intake trends, keyword signals, and live activity log",
   settings:      "Keyword management, API status, engine configuration",
   integrations:  "Scraping API gateway endpoints · auto session rotation · webhook config",
 };
@@ -544,13 +545,18 @@ export default function Dashboard() {
     }
   }, []);
 
+  const [pendingModeSwitch, setPendingModeSwitch] = useState(false);
+
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
   const toggleSound = () => setSoundEnabled((s) => !s);
-  const toggleMode = () => setMode((m) => {
+
+  const applyToggleMode = () => setMode((m) => {
     const next = m === "demo" ? "live" : "demo";
     try { localStorage.setItem(LS_MODE_KEY, next); } catch {}
     return next;
   });
+
+  const toggleMode = () => setPendingModeSwitch(true);
 
   const handleTabChange = useCallback((tab: Tab) => {
     setActiveTab(tab);
@@ -752,6 +758,7 @@ export default function Dashboard() {
                   mode === "live"
                     ? <LiveEmptyState title="Real Leads Pipeline" onGoToIntegrations={() => handleTabChange("integrations")} />
                     : <HomeFeed
+                        mode={mode}
                         onReachOut={(lead) => setOutreachLead(lead)}
                         highlightedLeadId={highlightedLeadId}
                         onClearHighlight={() => setHighlightedLeadId(null)}
@@ -809,6 +816,25 @@ export default function Dashboard() {
           <BottomNav activeTab={activeTab} onTabChange={handleTabChange} hotCount={hotCount} />
         </div>
       </div>
+
+      {/* ── Demo / Live mode switch confirmation ── */}
+      <ConfirmDialog
+        open={pendingModeSwitch}
+        variant={mode === "demo" ? "info" : "warning"}
+        title={mode === "demo" ? "Switch to Live Mode?" : "Switch to Demo Mode?"}
+        message={mode === "demo"
+          ? "Live mode listens for real ingress from your configured webhooks and API keys. Simulated demo data will be hidden."
+          : "Demo mode shows pre-configured sample data. Live ingestion will be paused until you switch back."
+        }
+        detail={mode === "demo"
+          ? "Make sure your webhook endpoints and API integrations are configured before switching."
+          : "Any claimed leads and notes from the current session are preserved."
+        }
+        confirmLabel={mode === "demo" ? "Switch to Live →" : "Switch to Demo →"}
+        cancelLabel="Stay in current mode"
+        onConfirm={() => { setPendingModeSwitch(false); applyToggleMode(); }}
+        onCancel={() => setPendingModeSwitch(false)}
+      />
     </ThemeContext.Provider>
   );
 }

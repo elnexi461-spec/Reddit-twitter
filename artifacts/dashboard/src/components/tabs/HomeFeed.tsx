@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ExternalLink, UserCheck, Check, Flame, Thermometer, Minus,
-  Search, SlidersHorizontal, LayoutGrid, List,
+  Search, SlidersHorizontal, List,
   MessageSquare, StickyNote, ChevronRight, ChevronLeft,
   AlertCircle, RefreshCw, X, ChevronLeft as PrevIcon, ChevronRight as NextIcon,
   Unlock,
@@ -12,6 +12,25 @@ import { toast } from "sonner";
 import { useLeads, type Lead, type PipelineStatus } from "@/hooks/useLeads";
 
 const PAGE_SIZE = 10;
+
+// ─── 15 Demo fake leads (shown in Demo mode instead of real API data) ─────────
+const DEMO_LEADS: Lead[] = [
+  { id:"dm01", source:"reddit", keyword:"cloudflare bypass",     title:"How do I bypass Cloudflare Bot Management for my price comparison scraper?",                    url:"https://reddit.com/r/webdev/comments/dm01",   timestamp:"2026-06-06T09:45:00Z", score:96, tier:"hot",  claimed:false, pipelineStatus:"unclaimed", notes:[] },
+  { id:"dm02", source:"HN",     keyword:"playwright stealth",    title:"Ask HN: Best approach for headless Chrome detection evasion in 2026?",                          url:"https://news.ycombinator.com/item?id=42001",  timestamp:"2026-06-06T09:12:00Z", score:91, tier:"hot",  claimed:false, pipelineStatus:"unclaimed", notes:[] },
+  { id:"dm03", source:"reddit", keyword:"scrapy proxy rotation",  title:"Scrapy keeps getting blocked — tried rotating proxies but site still detects me",              url:"https://reddit.com/r/learnpython/comments/dm03", timestamp:"2026-06-06T08:55:00Z", score:88, tier:"hot",  claimed:false, pipelineStatus:"unclaimed", notes:[] },
+  { id:"dm04", source:"reddit", keyword:"residential proxies",    title:"Are residential proxies still worth $400/month or is there a cheaper way to scrape at scale?", url:"https://reddit.com/r/datasets/comments/dm04", timestamp:"2026-06-06T08:31:00Z", score:85, tier:"hot",  claimed:false, pipelineStatus:"unclaimed", notes:[] },
+  { id:"dm05", source:"HN",     keyword:"web scraping 2026",      title:"Show HN: Built an AI-powered scraping pipeline but anti-bot keeps killing it",                 url:"https://news.ycombinator.com/item?id=42005",  timestamp:"2026-06-06T08:10:00Z", score:82, tier:"hot",  claimed:false, pipelineStatus:"unclaimed", notes:[] },
+  { id:"dm06", source:"reddit", keyword:"puppeteer cloudflare",   title:"Puppeteer getting 403 on every Cloudflare-protected site — what am I missing?",                url:"https://reddit.com/r/node/comments/dm06",    timestamp:"2026-06-06T07:48:00Z", score:78, tier:"warm", claimed:true,  claimedAt:"2026-06-06T08:00:00Z", pipelineStatus:"contacted", notes:[{text:"Initial outreach sent via LinkedIn", createdAt:"2026-06-06T08:05:00Z"}] },
+  { id:"dm07", source:"reddit", keyword:"datadome bypass",        title:"My scrapers work fine but DataDome blocks me on 30% of requests — need enterprise solution",   url:"https://reddit.com/r/webscraping/comments/dm07", timestamp:"2026-06-06T07:22:00Z", score:76, tier:"warm", claimed:false, pipelineStatus:"unclaimed", notes:[] },
+  { id:"dm08", source:"HN",     keyword:"scraping at scale",      title:"Ask HN: How does everyone handle JavaScript-heavy sites at 10M+ page/day scale?",             url:"https://news.ycombinator.com/item?id=42008",  timestamp:"2026-06-06T06:58:00Z", score:74, tier:"warm", claimed:false, pipelineStatus:"unclaimed", notes:[] },
+  { id:"dm09", source:"reddit", keyword:"crawl javascript",        title:"Need to crawl 500K product pages on React SPAs — what's the best headless solution?",          url:"https://reddit.com/r/Python/comments/dm09",   timestamp:"2026-06-06T06:35:00Z", score:71, tier:"warm", claimed:true,  claimedAt:"2026-06-06T07:10:00Z", pipelineStatus:"qualified", notes:[{text:"Follow-up call scheduled for Monday", createdAt:"2026-06-06T07:15:00Z"}] },
+  { id:"dm10", source:"reddit", keyword:"selenium detection",      title:"Site is detecting my Selenium automation even with random delays — tried everything",          url:"https://reddit.com/r/automation/comments/dm10", timestamp:"2026-06-06T06:05:00Z", score:68, tier:"warm", claimed:false, pipelineStatus:"unclaimed", notes:[] },
+  { id:"dm11", source:"HN",     keyword:"proxy pool management",   title:"What's a reliable proxy provider for production scraping infrastructure in 2026?",             url:"https://news.ycombinator.com/item?id=42011",  timestamp:"2026-06-06T05:30:00Z", score:65, tier:"warm", claimed:false, pipelineStatus:"unclaimed", notes:[] },
+  { id:"dm12", source:"reddit", keyword:"tls fingerprint",         title:"Anti-bot detects my requests even before JavaScript runs — TLS fingerprinting issue?",         url:"https://reddit.com/r/netsec/comments/dm12",  timestamp:"2026-06-06T04:55:00Z", score:58, tier:"cool", claimed:false, pipelineStatus:"unclaimed", notes:[] },
+  { id:"dm13", source:"reddit", keyword:"scraping rate limit",     title:"Getting 429 errors despite exponential backoff — need proper rate-limit management",           url:"https://reddit.com/r/webdev/comments/dm13",  timestamp:"2026-06-06T04:20:00Z", score:54, tier:"cool", claimed:false, pipelineStatus:"unclaimed", notes:[] },
+  { id:"dm14", source:"HN",     keyword:"web data extraction",     title:"Ask HN: What architecture do you use for reliable large-scale web data extraction?",           url:"https://news.ycombinator.com/item?id=42014",  timestamp:"2026-06-06T03:45:00Z", score:51, tier:"cool", claimed:false, pipelineStatus:"unclaimed", notes:[] },
+  { id:"dm15", source:"reddit", keyword:"captcha solving",         title:"Heuristic captcha solving vs paid services — cost/benefit analysis for 2M requests/day",       url:"https://reddit.com/r/MachineLearning/comments/dm15", timestamp:"2026-06-06T03:00:00Z", score:48, tier:"cool", claimed:false, pipelineStatus:"unclaimed", notes:[] },
+];
 
 const PIPELINE_STAGES: { status: PipelineStatus; label: string }[] = [
   { status: "unclaimed",  label: "Unclaimed" },
@@ -407,96 +426,6 @@ function LeadCard({
   );
 }
 
-// ─── Pipeline Board ────────────────────────────────────────────────────────────
-
-function PipelineMiniCard({ lead, onMove, onOpenOutreach }: {
-  lead: Lead;
-  onMove: (s: PipelineStatus) => void;
-  onOpenOutreach: () => void;
-}) {
-  const stageIdx = PIPELINE_STAGES.findIndex((s) => s.status === (lead.pipelineStatus ?? "unclaimed"));
-  const canPrev = stageIdx > 0;
-  const canNext = stageIdx < PIPELINE_STAGES.length - 1;
-
-  return (
-    <div
-      className="rounded-xl border dark:bg-zinc-900/60 bg-white dark:border-zinc-800 border-zinc-200 p-3 space-y-2 hover:dark:bg-zinc-900 hover:bg-zinc-50 transition-colors cursor-pointer group"
-      onClick={onOpenOutreach}
-    >
-      <div className="flex items-center gap-1.5 flex-wrap">
-        <SourceBadge source={lead.source} />
-        <TierBadge tier={lead.tier} score={lead.score} />
-      </div>
-      <p className="text-xs font-medium dark:text-zinc-200 text-zinc-800 line-clamp-2 leading-snug">{lead.title}</p>
-      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-        <button
-          disabled={!canPrev}
-          onClick={() => onMove(PIPELINE_STAGES[stageIdx - 1].status)}
-          className="p-1 rounded dark:bg-zinc-800 bg-zinc-100 dark:text-zinc-400 text-zinc-500 disabled:opacity-30 hover:dark:bg-zinc-700 hover:bg-zinc-200 transition-colors"
-        >
-          <ChevronLeft className="w-3 h-3" />
-        </button>
-        <span className="flex-1 text-[9px] dark:text-zinc-500 text-zinc-400 text-center font-mono">
-          {stageIdx + 1}/{PIPELINE_STAGES.length}
-        </span>
-        <button
-          disabled={!canNext}
-          onClick={() => onMove(PIPELINE_STAGES[stageIdx + 1].status)}
-          className="p-1 rounded dark:bg-zinc-800 bg-zinc-100 dark:text-zinc-400 text-zinc-500 disabled:opacity-30 hover:dark:bg-zinc-700 hover:bg-zinc-200 transition-colors"
-        >
-          <ChevronRight className="w-3 h-3" />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function PipelineBoard({ leads, onPipelineChange, onOpenOutreach }: {
-  leads: Lead[];
-  onPipelineChange: (id: string, status: PipelineStatus) => void;
-  onOpenOutreach: (lead: Lead) => void;
-}) {
-  const groups = useMemo(() => {
-    const map: Record<PipelineStatus, Lead[]> = { unclaimed: [], contacted: [], qualified: [], converted: [] };
-    for (const l of leads) map[l.pipelineStatus ?? "unclaimed"].push(l);
-    return map;
-  }, [leads]);
-
-  return (
-    <div className="flex gap-3 overflow-x-auto pb-3 -mx-1 px-1">
-      {PIPELINE_STAGES.map((stage) => (
-        <div key={stage.status} className="shrink-0 w-60 sm:w-64">
-          <div className={`flex items-center justify-between mb-2.5 px-3 py-2 rounded-lg border ${PIPELINE_COLUMN_STYLES[stage.status]}`}>
-            <span className="text-[11px] font-bold uppercase tracking-wider dark:text-zinc-300 text-zinc-700">
-              {stage.label}
-            </span>
-            <span className="text-[11px] font-bold tabular-nums dark:text-zinc-500 text-zinc-400 px-1.5 py-0.5 rounded-full dark:bg-zinc-800 bg-zinc-200">
-              {groups[stage.status].length}
-            </span>
-          </div>
-          <div className="space-y-2 min-h-[80px]">
-            <AnimatePresence>
-              {groups[stage.status].map((lead) => (
-                <motion.div key={lead.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <PipelineMiniCard
-                    lead={lead}
-                    onMove={(s) => onPipelineChange(lead.id, s)}
-                    onOpenOutreach={() => onOpenOutreach(lead)}
-                  />
-                </motion.div>
-              ))}
-              {groups[stage.status].length === 0 && (
-                <div className="flex items-center justify-center h-16 rounded-xl dark:bg-zinc-900/30 bg-zinc-50 border dark:border-zinc-800/50 border-zinc-200 border-dashed">
-                  <span className="text-[10px] dark:text-zinc-700 text-zinc-400">Empty</span>
-                </div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 // ─── Filter Bar ───────────────────────────────────────────────────────────────
 
@@ -635,11 +564,12 @@ interface HomeFeedProps {
   onReachOut: (lead: Lead) => void;
   highlightedLeadId?: string | null;
   onClearHighlight?: () => void;
+  mode?: "demo" | "live";
 }
 
-export default function HomeFeed({ onReachOut, highlightedLeadId, onClearHighlight }: HomeFeedProps) {
+export default function HomeFeed({ onReachOut, highlightedLeadId, onClearHighlight, mode = "demo" }: HomeFeedProps) {
   const {
-    data, filteredLeads, leads, error,
+    data: apiData, filteredLeads: realFilteredLeads, leads: realLeads, error,
     filterSource, setFilterSource,
     filterTier, setFilterTier,
     filterText, setFilterText,
@@ -647,7 +577,59 @@ export default function HomeFeed({ onReachOut, highlightedLeadId, onClearHighlig
     claimingId, claimLead, unclaimLead, updatePipeline, addNote, refetch,
   } = useLeads();
 
-  const [viewMode, setViewMode] = useState<"feed" | "pipeline">("feed");
+  const isDemo = mode === "demo";
+
+  // ── In demo mode: filter DEMO_LEADS client-side instead of using API data ──
+  const demoFilteredLeads = useMemo(() => {
+    if (!isDemo) return [];
+    let list = [...DEMO_LEADS];
+    if (filterSource !== "all") list = list.filter((l) => l.source === filterSource);
+    if (filterTier   !== "all") list = list.filter((l) => l.tier   === filterTier);
+    if (filterText.trim()) {
+      const q = filterText.toLowerCase();
+      list = list.filter((l) => l.title.toLowerCase().includes(q) || l.keyword.toLowerCase().includes(q));
+    }
+    if (sortOrder === "score") list.sort((a, b) => b.score - a.score);
+    return list;
+  }, [isDemo, filterSource, filterTier, filterText, sortOrder]);
+
+  // ── Demo-mode local claim state (no API calls in demo) ──
+  const [demoClaimedIds, setDemoClaimedIds] = useState<Set<string>>(() => {
+    const pre = DEMO_LEADS.filter((l) => l.claimed).map((l) => l.id);
+    return new Set(pre);
+  });
+
+  // Merge demo claimed state into DEMO_LEADS for display
+  const demoLeadsWithState: Lead[] = useMemo(() => {
+    if (!isDemo) return [];
+    return DEMO_LEADS.map((l) => ({
+      ...l,
+      claimed: demoClaimedIds.has(l.id),
+      claimedAt: demoClaimedIds.has(l.id) ? (l.claimedAt ?? new Date().toISOString()) : undefined,
+    }));
+  }, [isDemo, demoClaimedIds]);
+
+  // Re-filter with updated claim state
+  const demoFilteredLeads2 = useMemo(() => {
+    if (!isDemo) return demoFilteredLeads;
+    let list = [...demoLeadsWithState];
+    if (filterSource !== "all") list = list.filter((l) => l.source === filterSource);
+    if (filterTier   !== "all") list = list.filter((l) => l.tier   === filterTier);
+    if (filterText.trim()) {
+      const q = filterText.toLowerCase();
+      list = list.filter((l) => l.title.toLowerCase().includes(q) || l.keyword.toLowerCase().includes(q));
+    }
+    if (sortOrder === "score") list.sort((a, b) => b.score - a.score);
+    return list;
+  }, [isDemo, demoLeadsWithState, filterSource, filterTier, filterText, sortOrder]);
+
+  const filteredLeads = isDemo ? demoFilteredLeads2 : realFilteredLeads;
+  const leads = isDemo ? demoLeadsWithState : realLeads;
+  // Unified data object — demo mode uses a synthetic one so the stats strip renders
+  const data = isDemo
+    ? { totalLeads: demoLeadsWithState.length, uptime: 0, workers: { reddit: "active" as const, twitter: "active" as const }, leads: demoLeadsWithState }
+    : apiData;
+
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const [currentPage, setCurrentPage] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -723,25 +705,35 @@ export default function HomeFeed({ onReachOut, highlightedLeadId, onClearHighlig
   }, [handleKeyDown]);
 
   const handleClaim = useCallback(async (lead: Lead) => {
-    await claimLead(lead);
-    toast.success(`Lead claimed: ${lead.title.slice(0, 40)}…`, { duration: 3000 });
-  }, [claimLead]);
+    if (isDemo) {
+      setDemoClaimedIds((prev) => new Set([...prev, lead.id]));
+      toast.success(`[Demo] Lead claimed: ${lead.title.slice(0, 40)}…`, { duration: 3000 });
+    } else {
+      await claimLead(lead);
+      toast.success(`Lead claimed: ${lead.title.slice(0, 40)}…`, { duration: 3000 });
+    }
+  }, [isDemo, claimLead]);
 
   const handleUnclaim = useCallback(async (lead: Lead) => {
-    await unclaimLead(lead);
-    toast.success("Lead unclaimed — back to available pool", { duration: 3000 });
-  }, [unclaimLead]);
+    if (isDemo) {
+      setDemoClaimedIds((prev) => { const s = new Set(prev); s.delete(lead.id); return s; });
+      toast.success("[Demo] Lead released — back to available pool", { duration: 3000 });
+    } else {
+      await unclaimLead(lead);
+      toast.success("Lead unclaimed — back to available pool", { duration: 3000 });
+    }
+  }, [isDemo, unclaimLead]);
 
   const handlePipelineChange = useCallback(async (id: string, status: PipelineStatus) => {
-    await updatePipeline(id, status);
+    if (!isDemo) await updatePipeline(id, status);
     const label = PIPELINE_STAGES.find((s) => s.status === status)?.label ?? status;
     toast.success(`Pipeline → ${label}`);
-  }, [updatePipeline]);
+  }, [isDemo, updatePipeline]);
 
   const handleAddNote = useCallback(async (id: string, text: string) => {
-    await addNote(id, text);
+    if (!isDemo) await addNote(id, text);
     toast.success("Note saved");
-  }, [addNote]);
+  }, [isDemo, addNote]);
 
   return (
     <div className="space-y-4">
@@ -793,81 +785,53 @@ export default function HomeFeed({ onReachOut, highlightedLeadId, onClearHighlig
         searchRef={searchRef}
       />
 
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1 dark:bg-zinc-900 bg-zinc-100 rounded-lg p-1 border dark:border-zinc-800 border-zinc-200">
-          <button onClick={() => setViewMode("feed")}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all
-              ${viewMode === "feed" ? "dark:bg-zinc-700 bg-white shadow-sm dark:text-zinc-100 text-zinc-900" : "dark:text-zinc-500 text-zinc-500"}`}
-          >
-            <List className="w-3.5 h-3.5" /> Feed
-          </button>
-          <button onClick={() => setViewMode("pipeline")}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all
-              ${viewMode === "pipeline" ? "dark:bg-zinc-700 bg-white shadow-sm dark:text-zinc-100 text-zinc-900" : "dark:text-zinc-500 text-zinc-500"}`}
-          >
-            <LayoutGrid className="w-3.5 h-3.5" /> Pipeline
-          </button>
-        </div>
-      </div>
-
-      <AnimatePresence mode="wait" initial={false}>
-        {viewMode === "feed" ? (
-          <motion.div key="feed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="space-y-3">
-            {!data ? (
-              Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-[130px] rounded-xl dark:bg-zinc-900/40 bg-zinc-100 border dark:border-zinc-800 border-zinc-200 animate-pulse" />
-              ))
-            ) : filteredLeads.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-48 rounded-xl dark:bg-zinc-900/30 bg-zinc-50 border dark:border-zinc-800 border-zinc-200 border-dashed">
-                <div className="text-2xl mb-2">🎯</div>
-                <p className="text-sm dark:text-zinc-500 text-zinc-400">No leads match your filters</p>
-                <button onClick={() => { setFilterSource("all"); setFilterTier("all"); setFilterText(""); }}
-                  className="mt-2 text-xs text-blue-400 hover:text-blue-300 transition-colors">
-                  Clear filters
-                </button>
-              </div>
-            ) : (
-              <>
-                <AnimatePresence mode="popLayout">
-                  {pagedLeads.map((lead, i) => (
-                    <LeadCard
-                      key={lead.id}
-                      lead={lead}
-                      index={i}
-                      isFocused={focusedIndex === i}
-                      isHighlighted={lead.id === highlightedLeadId}
-                      isClaiming={claimingId === lead.id}
-                      onClaim={() => handleClaim(lead)}
-                      onUnclaim={() => handleUnclaim(lead)}
-                      onOpenOutreach={() => onReachOut(lead)}
-                      onPipelineChange={(s) => handlePipelineChange(lead.id, s)}
-                      onNoteAdd={(text) => handleAddNote(lead.id, text)}
-                    />
-                  ))}
-                </AnimatePresence>
-
-                {totalPages > 1 && (
-                  <Pagination
-                    page={currentPage}
-                    totalPages={totalPages}
-                    total={filteredLeads.length}
-                    onPrev={() => { setCurrentPage((p) => Math.max(0, p - 1)); setFocusedIndex(-1); }}
-                    onNext={() => { setCurrentPage((p) => Math.min(totalPages - 1, p + 1)); setFocusedIndex(-1); }}
-                  />
-                )}
-              </>
-            )}
-          </motion.div>
+      {/* Lead list */}
+      <div className="space-y-3">
+        {!data && !isDemo ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-[130px] rounded-xl dark:bg-zinc-900/40 bg-zinc-100 border dark:border-zinc-800 border-zinc-200 animate-pulse" />
+          ))
+        ) : filteredLeads.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-48 rounded-xl dark:bg-zinc-900/30 bg-zinc-50 border dark:border-zinc-800 border-zinc-200 border-dashed">
+            <div className="text-2xl mb-2">🎯</div>
+            <p className="text-sm dark:text-zinc-500 text-zinc-400">No leads match your filters</p>
+            <button onClick={() => { setFilterSource("all"); setFilterTier("all"); setFilterText(""); }}
+              className="mt-2 text-xs text-blue-400 hover:text-blue-300 transition-colors">
+              Clear filters
+            </button>
+          </div>
         ) : (
-          <motion.div key="pipeline" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
-            <PipelineBoard
-              leads={filteredLeads}
-              onPipelineChange={handlePipelineChange}
-              onOpenOutreach={onReachOut}
-            />
-          </motion.div>
+          <>
+            <AnimatePresence mode="popLayout">
+              {pagedLeads.map((lead, i) => (
+                <LeadCard
+                  key={lead.id}
+                  lead={lead}
+                  index={i}
+                  isFocused={focusedIndex === i}
+                  isHighlighted={lead.id === highlightedLeadId}
+                  isClaiming={claimingId === lead.id}
+                  onClaim={() => handleClaim(lead)}
+                  onUnclaim={() => handleUnclaim(lead)}
+                  onOpenOutreach={() => onReachOut(lead)}
+                  onPipelineChange={(s) => handlePipelineChange(lead.id, s)}
+                  onNoteAdd={(text) => handleAddNote(lead.id, text)}
+                />
+              ))}
+            </AnimatePresence>
+
+            {totalPages > 1 && (
+              <Pagination
+                page={currentPage}
+                totalPages={totalPages}
+                total={filteredLeads.length}
+                onPrev={() => { setCurrentPage((p) => Math.max(0, p - 1)); setFocusedIndex(-1); }}
+                onNext={() => { setCurrentPage((p) => Math.min(totalPages - 1, p + 1)); setFocusedIndex(-1); }}
+              />
+            )}
+          </>
         )}
-      </AnimatePresence>
+      </div>
     </div>
   );
 }
