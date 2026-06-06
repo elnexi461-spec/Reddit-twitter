@@ -77,22 +77,23 @@ const tabVariants = {
   exit:   { opacity: 0, y: -6 },
 };
 
-// ─── ZenRows logo (nav) ───────────────────────────────────────────────────────
+// ─── ZenRows logo (nav) — pitch black treatment ───────────────────────────────
 function NavLogo({ size = "md" }: { size?: "sm" | "md" }) {
   const dim = size === "sm" ? "w-6 h-6" : "w-7 h-7";
   return (
     <div
       className={`${dim} rounded-lg overflow-hidden shrink-0`}
       style={{
-        border: "1px solid rgba(0,255,179,0.25)",
-        boxShadow: "0 0 8px rgba(0,255,179,0.12)",
+        background: "#000000",
+        border: "1px solid rgba(0,0,0,0.8)",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.6)",
       }}
     >
       <img
         src={`${import.meta.env.BASE_URL}zenrows-logo.jpg`}
         alt="ZenRows"
         className="w-full h-full object-cover"
-        style={{ objectPosition: "8% center" }}
+        style={{ objectPosition: "8% center", filter: "brightness(0)" }}
       />
     </div>
   );
@@ -162,33 +163,101 @@ function HotLeadToast({ lead, count, onView, onDismiss }: {
   );
 }
 
-// ─── Live Empty State (shown when Demo mode is OFF for simulated tabs) ────────
+// ─── Live Empty State — "Listening for Ingress…" animated pulse ──────────────
 function LiveEmptyState({ title, onGoToIntegrations }: { title: string; onGoToIntegrations: () => void }) {
   return (
-    <div className="flex flex-col items-center gap-4 py-24 text-center">
-      <div
-        className="w-14 h-14 rounded-2xl flex items-center justify-center"
-        style={{ background: "rgba(0,255,179,0.07)", border: "1px solid rgba(0,255,179,0.15)" }}
-      >
-        <Activity className="w-6 h-6" style={{ color: "#00ffb3" }} />
-      </div>
-      <div>
-        <div className="text-base font-bold dark:text-zinc-200 text-zinc-800">Live Mode Active</div>
-        <div className="text-sm dark:text-zinc-500 text-zinc-500 mt-1.5 max-w-xs mx-auto leading-relaxed">
-          {title} receives real data from your connected sources.
-          Configure endpoints in <button onClick={onGoToIntegrations} className="underline underline-offset-2 hover:text-zinc-300 transition-colors">Integrations</button> to start streaming.
+    <div className="flex flex-col items-center gap-6 py-20 text-center">
+
+      {/* Animated radar rings */}
+      <div className="relative w-24 h-24 flex items-center justify-center">
+        {[0, 1, 2].map((i) => (
+          <motion.div
+            key={i}
+            className="absolute rounded-full"
+            style={{
+              border: "1px solid rgba(0,255,179,0.25)",
+              width: 40 + i * 22,
+              height: 40 + i * 22,
+            }}
+            animate={{ opacity: [0.7, 0, 0.7], scale: [1, 1.08, 1] }}
+            transition={{
+              duration: 2.4,
+              repeat: Infinity,
+              delay: i * 0.55,
+              ease: "easeInOut",
+            }}
+          />
+        ))}
+        <div
+          className="w-10 h-10 rounded-2xl flex items-center justify-center z-10"
+          style={{
+            background: "rgba(0,255,179,0.08)",
+            border: "1px solid rgba(0,255,179,0.2)",
+            boxShadow: "0 0 16px rgba(0,255,179,0.1)",
+          }}
+        >
+          <Activity className="w-5 h-5" style={{ color: "#00ffb3" }} />
         </div>
       </div>
+
+      <div className="flex flex-col gap-2 items-center">
+        {/* Animated "Listening for Ingress..." label */}
+        <div className="flex items-center gap-2">
+          <motion.span
+            className="w-1.5 h-1.5 rounded-full"
+            style={{ background: "#00ffb3" }}
+            animate={{ opacity: [1, 0.2, 1] }}
+            transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <span
+            className="text-xs font-bold tracking-[0.2em] uppercase"
+            style={{ color: "#00ffb3" }}
+          >
+            Listening for Ingress…
+          </span>
+        </div>
+
+        <div className="text-sm font-semibold dark:text-zinc-300 text-zinc-700 mt-1">
+          {title} · Live Mode Active
+        </div>
+        <div className="text-xs dark:text-zinc-600 text-zinc-500 max-w-[280px] leading-relaxed">
+          Charts and logs populate automatically the moment live data hits your connected endpoints.
+        </div>
+      </div>
+
+      {/* Skeleton pulse bars — simulates "waiting for chart data" */}
+      <div className="w-full max-w-sm flex flex-col gap-2 px-2">
+        {[0.9, 0.65, 0.75, 0.5].map((w, i) => (
+          <motion.div
+            key={i}
+            className="h-1.5 rounded-full"
+            style={{ width: `${w * 100}%` }}
+            animate={{ opacity: [0.07, 0.18, 0.07] }}
+            transition={{
+              duration: 1.8,
+              repeat: Infinity,
+              delay: i * 0.25,
+              ease: "easeInOut",
+            }}
+          >
+            <div
+              className="w-full h-full rounded-full"
+              style={{ background: "rgba(0,255,179,0.5)" }}
+            />
+          </motion.div>
+        ))}
+      </div>
+
       <button
         onClick={onGoToIntegrations}
-        className="mt-1 px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
+        className="mt-1 px-4 py-2 rounded-xl text-xs font-bold tracking-wide transition-all active:scale-95"
         style={{
           color: "#00ffb3",
-          background: "rgba(0,255,179,0.08)",
-          border: "1px solid rgba(0,255,179,0.2)",
+          background: "rgba(0,255,179,0.07)",
+          border: "1px solid rgba(0,255,179,0.18)",
         }}
       >
-        Open Integrations →
+        Configure Integrations →
       </button>
     </div>
   );
@@ -254,24 +323,54 @@ function TopNav({
 
       {/* Controls */}
       <div className="flex items-center gap-2 shrink-0">
-        {/* Demo / Live mode toggle */}
-        <button
-          onClick={onToggleMode}
-          className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95"
-          style={mode === "demo" ? {
-            background: "rgba(245,158,11,0.12)",
-            border: "1px solid rgba(245,158,11,0.25)",
-            color: "#f59e0b",
-          } : {
-            background: "rgba(0,255,179,0.10)",
-            border: "1px solid rgba(0,255,179,0.25)",
-            color: "#00ffb3",
-          }}
-          title={mode === "demo" ? "Switch to Live mode (hide simulated data)" : "Switch to Demo mode (show simulated data)"}
+        {/* Demo / Live mode toggle — pill switch */}
+        <div
+          className="hidden sm:flex items-center gap-2"
+          title={mode === "demo" ? "Switch to Live mode — clears simulated data, listens for real ingress" : "Switch to Demo mode — show pre-configured intelligence data"}
         >
-          <span className={`w-1.5 h-1.5 rounded-full ${mode === "demo" ? "bg-amber-400" : "bg-emerald-400"} animate-pulse`} />
-          {mode === "demo" ? "DEMO" : "LIVE"}
-        </button>
+          <span
+            className="text-[10px] font-bold tracking-wider uppercase transition-all duration-200"
+            style={{ color: mode === "demo" ? "#f59e0b" : "rgba(245,158,11,0.3)" }}
+          >
+            Demo
+          </span>
+          <button
+            onClick={onToggleMode}
+            className="relative w-10 h-5 rounded-full transition-colors duration-300 shrink-0 active:scale-95"
+            style={{
+              background: mode === "live"
+                ? "linear-gradient(135deg, rgba(0,200,122,0.35), rgba(0,255,179,0.25))"
+                : "rgba(245,158,11,0.18)",
+              border: mode === "live"
+                ? "1px solid rgba(0,255,179,0.35)"
+                : "1px solid rgba(245,158,11,0.3)",
+              boxShadow: mode === "live"
+                ? "0 0 10px rgba(0,255,179,0.12)"
+                : "none",
+            }}
+            aria-label={`Switch to ${mode === "demo" ? "live" : "demo"} mode`}
+          >
+            <motion.div
+              className="absolute top-[3px] w-3.5 h-3.5 rounded-full shadow-sm"
+              animate={{ x: mode === "live" ? 20 : 3 }}
+              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+              style={{
+                background: mode === "live"
+                  ? "linear-gradient(135deg, #00c87a, #00ffb3)"
+                  : "#f59e0b",
+                boxShadow: mode === "live"
+                  ? "0 0 8px rgba(0,255,179,0.5)"
+                  : "0 0 6px rgba(245,158,11,0.4)",
+              }}
+            />
+          </button>
+          <span
+            className="text-[10px] font-bold tracking-wider uppercase transition-all duration-200"
+            style={{ color: mode === "live" ? "#00ffb3" : "rgba(0,255,179,0.3)" }}
+          >
+            Live
+          </span>
+        </div>
 
         <a
           href="/api/activity/export/csv"
@@ -533,6 +632,42 @@ export default function Dashboard() {
                 <Flame className="w-2.5 h-2.5" /> {hotCount}
               </motion.span>
             )}
+            {/* Mobile Demo/Live toggle */}
+            <div className="flex items-center gap-1.5">
+              <span
+                className="text-[9px] font-bold tracking-wider uppercase transition-all duration-200"
+                style={{ color: mode === "demo" ? "#f59e0b" : "rgba(245,158,11,0.3)" }}
+              >
+                D
+              </span>
+              <button
+                onClick={toggleMode}
+                className="relative w-8 h-4 rounded-full transition-colors duration-300"
+                style={{
+                  background: mode === "live"
+                    ? "rgba(0,200,122,0.3)"
+                    : "rgba(245,158,11,0.18)",
+                  border: mode === "live"
+                    ? "1px solid rgba(0,255,179,0.3)"
+                    : "1px solid rgba(245,158,11,0.3)",
+                }}
+              >
+                <motion.div
+                  className="absolute top-[2px] w-2.5 h-2.5 rounded-full"
+                  animate={{ x: mode === "live" ? 17 : 2 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  style={{
+                    background: mode === "live" ? "#00ffb3" : "#f59e0b",
+                  }}
+                />
+              </button>
+              <span
+                className="text-[9px] font-bold tracking-wider uppercase transition-all duration-200"
+                style={{ color: mode === "live" ? "#00ffb3" : "rgba(0,255,179,0.3)" }}
+              >
+                L
+              </span>
+            </div>
             <button
               onClick={toggleTheme}
               className="w-7 h-7 rounded-lg flex items-center justify-center dark:bg-zinc-900 bg-zinc-100 dark:border dark:border-zinc-800 border border-zinc-200"

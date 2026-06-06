@@ -32,7 +32,7 @@ export default function SplashScreen({ onDone }: Props) {
     >
       <div className="flex flex-col items-center gap-8 select-none">
 
-        {/* ── ZenRows logo ── */}
+        {/* ── ZenRows logo — pitch black treatment ── */}
         <motion.div
           initial={{ opacity: 0, scale: 0.85, y: 8 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -42,21 +42,23 @@ export default function SplashScreen({ onDone }: Props) {
           <div
             className="w-56 h-28 rounded-2xl overflow-hidden"
             style={{
-              boxShadow: "0 0 48px rgba(0,255,180,0.22), 0 0 0 1px rgba(0,255,180,0.15)",
+              background: "#000000",
+              boxShadow: "0 0 0 1px rgba(0,0,0,0.9), 0 8px 40px rgba(0,0,0,0.7), 0 2px 12px rgba(0,0,0,0.5)",
             }}
           >
             <img
               src={`${import.meta.env.BASE_URL}zenrows-logo.jpg`}
               alt="ZenRows"
               className="w-full h-full object-cover"
+              style={{ filter: "brightness(0)" }}
             />
           </div>
-          {/* Glow pulse */}
+          {/* Subtle dark pulse */}
           <motion.div
             className="absolute inset-0 rounded-2xl pointer-events-none"
-            animate={{ opacity: [0.4, 0.8, 0.4] }}
+            animate={{ opacity: [0.3, 0.6, 0.3] }}
             transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-            style={{ boxShadow: "0 0 32px rgba(0,255,180,0.18)" }}
+            style={{ boxShadow: "0 0 24px rgba(0,0,0,0.6)" }}
           />
         </motion.div>
 
