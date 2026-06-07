@@ -5,11 +5,12 @@ import {
   Search, SlidersHorizontal, List,
   MessageSquare, StickyNote, ChevronRight, ChevronLeft,
   AlertCircle, RefreshCw, X, ChevronLeft as PrevIcon, ChevronRight as NextIcon,
-  Unlock,
+  Unlock, Copy, CheckCircle as CheckCircleIcon,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { useLeads, type Lead, type PipelineStatus } from "@/hooks/useLeads";
+import { normalizeLeads } from "@/hooks/useNormalizedData";
 
 const PAGE_SIZE = 10;
 
@@ -171,6 +172,44 @@ function InlineConfirm({
   );
 }
 
+// ─── Copy Payload Button ──────────────────────────────────────────────────────
+
+function CopyPayloadButton({ lead }: { lead: Lead }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      const normalized = normalizeLeads([lead])[0];
+      await navigator.clipboard.writeText(JSON.stringify(normalized, null, 2));
+      setCopied(true);
+      toast.success("Payload copied to clipboard");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Clipboard access denied");
+    }
+  };
+
+  return (
+    <motion.button
+      onClick={handleCopy}
+      animate={copied ? { scale: [1, 1.08, 1] } : {}}
+      transition={{ duration: 0.25 }}
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all active:scale-95"
+      style={{
+        background: copied ? "rgba(0,255,179,0.1)" : "rgba(0,255,179,0.05)",
+        color: copied ? "#00ffb3" : "#52a58e",
+        border: `1px solid ${copied ? "rgba(0,255,179,0.25)" : "rgba(0,255,179,0.1)"}`,
+      }}
+      title="Copy full normalized JSON payload to clipboard"
+    >
+      {copied
+        ? <><CheckCircleIcon className="w-3 h-3" /> Copied!</>
+        : <><Copy className="w-3 h-3" /> Copy Payload</>
+      }
+    </motion.button>
+  );
+}
+
 // ─── Lead Card ────────────────────────────────────────────────────────────────
 
 function LeadCard({
@@ -326,6 +365,8 @@ function LeadCard({
             <StickyNote className="w-3 h-3" />
             {lead.notes?.length ? `${lead.notes.length} note${lead.notes.length > 1 ? "s" : ""}` : "Note"}
           </button>
+
+          <CopyPayloadButton lead={lead} />
         </div>
 
         {/* Inline confirmation row */}

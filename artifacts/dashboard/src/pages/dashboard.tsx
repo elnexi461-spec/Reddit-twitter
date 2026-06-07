@@ -1,11 +1,16 @@
-import { useState, useEffect, useCallback, createContext, useContext } from "react";
+import { useState, useEffect, useCallback, createContext, useContext, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Activity, Shield, Bell, Settings as SettingsIcon,
   Sun, Moon, Flame, Download, Webhook, Crosshair, Gauge,
-  Package, Briefcase, Server,
+  Package, Briefcase, Server, Menu,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ControlBar } from "@/components/ControlBar";
+import { DataArbitragePanel } from "@/components/DataArbitragePanel";
+import { MobileTabMenu } from "@/components/MobileTabMenu";
+import { useMiningEngine } from "@/hooks/useMiningEngine";
+import { normalizeLeads, computeStats } from "@/hooks/useNormalizedData";
 
 import SplashScreen from "@/components/SplashScreen";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -546,6 +551,13 @@ export default function Dashboard() {
   }, []);
 
   const [pendingModeSwitch, setPendingModeSwitch] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+
+  // ── Mining engine (live mode) ──────────────────────────────────────────────
+  const { status: miningStatus, entries: terminalEntries, execute: executeMining, reset: resetMining, clearLog: clearMiningLog } = useMiningEngine();
+
+  // ── Normalized data stats ──────────────────────────────────────────────────
+  const normalizedStats = useMemo(() => computeStats(normalizeLeads(leads)), [leads]);
 
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
   const toggleSound = () => setSoundEnabled((s) => !s);
@@ -700,11 +712,11 @@ export default function Dashboard() {
               {theme === "dark" ? <Sun className="w-3 h-3 text-zinc-400" /> : <Moon className="w-3 h-3 text-zinc-500" />}
             </button>
             <button
-              onClick={() => handleTabChange("settings")}
-              className={`w-7 h-7 rounded-lg flex items-center justify-center dark:bg-zinc-900 bg-zinc-100 dark:border dark:border-zinc-800 border border-zinc-200
-                ${activeTab === "settings" ? "dark:text-zinc-100 text-zinc-900" : "dark:text-zinc-500 text-zinc-400"}`}
+              onClick={() => setShowMobileMenu(true)}
+              className="w-7 h-7 rounded-lg flex items-center justify-center dark:bg-zinc-900 bg-zinc-100 dark:border dark:border-zinc-800 border border-zinc-200 dark:text-zinc-400 text-zinc-500"
+              aria-label="Open navigation menu"
             >
-              <SettingsIcon className="w-3 h-3" />
+              <Menu className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
@@ -726,6 +738,16 @@ export default function Dashboard() {
               </p>
             </div>
           </div>
+
+          {/* Live mode: active command center control bar */}
+          {mode === "live" && !outreachLead && (
+            <ControlBar
+              status={miningStatus}
+              totalOutputs={normalizedStats.totalCount}
+              onExecute={executeMining}
+              onReset={resetMining}
+            />
+          )}
 
           {/* Tab content */}
           <AnimatePresence mode="wait" initial={false}>
@@ -755,20 +777,14 @@ export default function Dashboard() {
                 style={{ willChange: "opacity, transform" }}
               >
                 {activeTab === "feed" && (
-                  mode === "live"
-                    ? <LiveEmptyState title="Real Leads Pipeline" onGoToIntegrations={() => handleTabChange("integrations")} />
-                    : <HomeFeed
-                        mode={mode}
-                        onReachOut={(lead) => setOutreachLead(lead)}
-                        highlightedLeadId={highlightedLeadId}
-                        onClearHighlight={() => setHighlightedLeadId(null)}
-                      />
+                  <HomeFeed
+                    mode={mode}
+                    onReachOut={(lead) => setOutreachLead(lead)}
+                    highlightedLeadId={highlightedLeadId}
+                    onClearHighlight={() => setHighlightedLeadId(null)}
+                  />
                 )}
-                {activeTab === "intercept" && (
-                  mode === "live"
-                    ? <LiveEmptyState title="Competitor Intercept" onGoToIntegrations={() => handleTabChange("integrations")} />
-                    : <CompetitorFeed />
-                )}
+                {activeTab === "intercept" && <CompetitorFeed />}
                 {activeTab === "packages" && (
                   <PackageTracker mode={mode} livePackages={liveStream.packages} />
                 )}
@@ -778,21 +794,9 @@ export default function Dashboard() {
                 {activeTab === "infra" && (
                   <CloudInfraAnalyzer mode={mode} liveInfra={liveStream.infra} />
                 )}
-                {activeTab === "telemetry" && (
-                  mode === "live"
-                    ? <LiveEmptyState title="Client Telemetry" onGoToIntegrations={() => handleTabChange("integrations")} />
-                    : <TelemetryVisualizer />
-                )}
-                {activeTab === "sentinel" && (
-                  mode === "live"
-                    ? <LiveEmptyState title="Gateway Monitor" onGoToIntegrations={() => handleTabChange("integrations")} />
-                    : <SentinelMonitor />
-                )}
-                {activeTab === "notifications" && (
-                  mode === "live"
-                    ? <LiveEmptyState title="Analytics" onGoToIntegrations={() => handleTabChange("integrations")} />
-                    : <Notifications />
-                )}
+                {activeTab === "telemetry" && <TelemetryVisualizer />}
+                {activeTab === "sentinel" && <SentinelMonitor />}
+                {activeTab === "notifications" && <Notifications />}
                 {activeTab === "integrations" && <IntegrationsTab />}
                 {activeTab === "settings" && (
                   <SettingsTab
@@ -809,12 +813,29 @@ export default function Dashboard() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Live mode: Data Arbitrage & Marketplace Ingress panel */}
+          {mode === "live" && !outreachLead && (
+            <div className="mt-6">
+              <DataArbitragePanel
+                stats={normalizedStats}
+                status={miningStatus}
+                entries={terminalEntries}
+                onClearLog={clearMiningLog}
+              />
+            </div>
+          )}
         </main>
 
-        {/* Mobile bottom nav */}
-        <div className="sm:hidden">
-          <BottomNav activeTab={activeTab} onTabChange={handleTabChange} hotCount={hotCount} />
-        </div>
+        {/* Mobile tab menu overlay (hamburger) */}
+        <MobileTabMenu
+          open={showMobileMenu}
+          tabs={TABS}
+          activeTab={activeTab}
+          hotCount={hotCount}
+          onTabChange={handleTabChange}
+          onClose={() => setShowMobileMenu(false)}
+        />
       </div>
 
       {/* ── Demo / Live mode switch confirmation ── */}
